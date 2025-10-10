@@ -11,7 +11,9 @@ import {
   StatusBar as RNStatusBar,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage"
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import API from "./api";
@@ -47,11 +49,19 @@ export default function LoginScreen({ navigation }) {
 
     const data = await response.json();
     if (response.ok) {
-      alert("Login successful!");
-      navigation.navigate("Userhome");
-    } else {
-      alert(data.message);
+    if (data.user) {
+    await AsyncStorage.setItem("user", JSON.stringify(data.user));
+    Alert.alert(
+   "Login Successful",
+   `Welcome back, ${data.user.username || data.user.email}!`
+     );
+
+    navigation.navigate("Userhome");
+     } else {
+    Alert.alert("Error", "User data missing in response.");
+     }
     }
+
   } catch (error) {
     alert("Network error: " + error.message);
   }
