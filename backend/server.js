@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import authRoutes from "./routes/authRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
+import cartRoutes from "./routes/cartRoutes.js";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -24,6 +25,7 @@ mongoose
 // Routes
 app.use("/api", authRoutes);
 app.use("/api/product", productRoutes);
+app.use("/api/cart", cartRoutes);
 
 
 const __filename = fileURLToPath(import.meta.url);
