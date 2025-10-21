@@ -1,0 +1,6 @@
+{
+  "watch": ["routes", "models", "controllers", "server.js"],
+  "ext": "js,json",
+  "ignore": ["logs/*", "uploads/*"],
+  "exec": "node -r dotenv/config --experimental-modules server.js"
+}
