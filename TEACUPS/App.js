@@ -1,82 +1,82 @@
-"use client"
-import { useCallback } from "react"
-import { StatusBar } from "expo-status-bar"
-import { StyleSheet, Text, View, TouchableOpacity, Image } from "react-native"
-import { useFonts } from "expo-font"
-import * as SplashScreen from "expo-splash-screen"
-import { SafeAreaView } from "react-native-safe-area-context"
-import { NavigationContainer } from "@react-navigation/native"
-import { createNativeStackNavigator } from "@react-navigation/native-stack"
-import LoginScreen from "./login"
-import SignUpScreen from "./signup"
+"use client";
+import React, { useCallback } from "react";
+import { StyleSheet } from "react-native";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { useFonts } from "expo-font";
+import * as SplashScreen from "expo-splash-screen";
+import Toast from "react-native-toast-message";
+import { toastConfig } from "./toastConfig.js";
+
+// Screens
+import LoginScreen from "./login";
+import SignUpScreen from "./signup";
 import ForgotPassword from "./forgotPassword";
-import Dashboard from "./dashboard"
-import SettingsScreen from "./SettingsScreen"
-import EditProfile from "./EditProfile"
-import ChangePassword from "./ChangePassword"
-import Report from "./Report"
+import Dashboard from "./dashboard";
+import SettingsScreen from "./SettingsScreen";
+import EditProfile from "./EditProfile";
+import ChangePassword from "./ChangePassword";
+import Report from "./Report";
 import Userhome from "./Userhome";
 import ProductDetails from "./ProductDetails";
 import AddToCharts from "./addtocharts";
 import NotificationsPanel from "./NotificationsPanel";
-import OnboardingScreen from "./OnboardingScreen"; // Create this file/component
-import UserProfile from "./UserProfile"; 
+import OnboardingScreen from "./OnboardingScreen";
+import UserProfile from "./UserProfile";
 
+SplashScreen.preventAutoHideAsync();
 
-
-SplashScreen.preventAutoHideAsync()
-
-const Stack = createNativeStackNavigator()
+const Stack = createNativeStackNavigator();
 
 export default function App() {
+  // Load custom fonts
   const [fontsLoaded] = useFonts({
     "Poppins-Bold": require("./assets/font/Poppins/Poppins-Bold.ttf"),
     "Poppins-Regular": require("./assets/font/Poppins/Poppins-Regular.ttf"),
     "Poppins-Light": require("./assets/font/Poppins/Poppins-Light.ttf"),
     "Poppins-ExtraBold": require("./assets/font/Poppins/Poppins-ExtraBold.ttf"),
     "Poppins-LightItalic": require("./assets/font/Poppins/Poppins-LightItalic.ttf"),
-  })
+  });
 
+  // Hide splash screen when fonts are loaded
   const onLayoutRootView = useCallback(async () => {
     if (fontsLoaded) {
-      await SplashScreen.hideAsync()
+      await SplashScreen.hideAsync();
     }
-  }, [fontsLoaded])
+  }, [fontsLoaded]);
 
-  const handleLogIn = (navigation) => {
-    navigation.navigate("Login")
-  }
-
-  const handleSignUp = (navigation) => {
-    navigation.navigate("SignUp")
-  }
-
-  if (!fontsLoaded) {
-    return null
-  }
+  if (!fontsLoaded) return null;
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator initialRouteName="Onboarding" screenOptions={{ headerShown: false }}>
-        <>
-          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="SignUp" component={SignUpScreen} />
-          <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
-          <Stack.Screen name="Dashboard" component={Dashboard} />
-          <Stack.Screen name="Report" component={Report} />
-          <Stack.Screen name="Settings" component={SettingsScreen} />
-          <Stack.Screen name="EditProfile" component={EditProfile} />
-          <Stack.Screen name="ChangePassword" component={ChangePassword} />
-          <Stack.Screen name="Userhome" component={Userhome} />
-          <Stack.Screen name="ProductDetails" component={ProductDetails} />
-          <Stack.Screen name="AddToCharts" component={AddToCharts} />
-          <Stack.Screen name="Notifications" component={NotificationsPanel} />
-          <Stack.Screen name="Profile" component={UserProfile} />
-        </>
+    <>
+    <NavigationContainer onReady={onLayoutRootView}>
+      <Stack.Navigator
+        initialRouteName="Onboarding"
+        screenOptions={{ headerShown: false }}
+      >
+        {/* App Screens */}
+        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="SignUp" component={SignUpScreen} />
+        <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
+        <Stack.Screen name="Dashboard" component={Dashboard} />
+        <Stack.Screen name="Report" component={Report} />
+        <Stack.Screen name="Settings" component={SettingsScreen} />
+        <Stack.Screen name="EditProfile" component={EditProfile} />
+        <Stack.Screen name="ChangePassword" component={ChangePassword} />
+        <Stack.Screen name="Userhome" component={Userhome} />
+        <Stack.Screen name="ProductDetails" component={ProductDetails} />
+        <Stack.Screen name="AddToCharts" component={AddToCharts} />
+        <Stack.Screen name="Notifications" component={NotificationsPanel} />
+        <Stack.Screen name="Profile" component={UserProfile} />
       </Stack.Navigator>
+
+      
     </NavigationContainer>
-  )
+    {/* ✅ Place Toast OUTSIDE navigation */}
+    <Toast config={toastConfig} position="top" visibilityTime={3000} />
+    </>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -192,5 +192,4 @@ const styles = StyleSheet.create({
     color: "white",
     fontFamily: "Poppins-Bold",
   },
-})
-
+});

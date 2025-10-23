@@ -7,17 +7,21 @@ import {
   StyleSheet,
   Image,
   ScrollView,
-  Alert,
+  Alert, // Keeping Alert for now, but will replace usage with Toast.show
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   useColorScheme,
   useWindowDimensions,
-  Modal, // 1. Import Modal
+  Modal,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import API from "./api";
+import Toast from "react-native-toast-message"; 
+
+// Set a consistent offset to ensure the toast clears the header/status bar area
+const TOAST_OFFSET = 40; 
 
 // 2. Add placeholder text for the modal
 const TERMS_AND_CONDITIONS_TEXT = `Welcome to TeaCUPS!
@@ -106,7 +110,13 @@ export default function UserProfile({ navigation, route }) {
         }
       } catch (e) {
         console.error("Failed to load user profile:", e);
-        Alert.alert("Error", "Could not load your profile.");
+        // Toast with topOffset
+        Toast.show({
+          type: "error",
+          text1: "Error",
+          text2: "Could not load your profile.",
+          topOffset: TOAST_OFFSET,
+        });
       }
     };
     loadUserProfile();
@@ -118,10 +128,13 @@ export default function UserProfile({ navigation, route }) {
       const permissionResult =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permissionResult.granted) {
-        Alert.alert(
-          "Permission Required",
-          "You need to allow access to your photos."
-        );
+        // Toast with topOffset
+        Toast.show({
+          type: "error",
+          text1: "Permission Required",
+          text2: "You need to allow access to your photos.",
+          topOffset: TOAST_OFFSET,
+        });
         return;
       }
 
@@ -137,7 +150,13 @@ export default function UserProfile({ navigation, route }) {
       }
     } catch (err) {
       console.error("pickImage error:", err);
-      Alert.alert("Error", "Could not pick image.");
+      // Toast with topOffset
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Could not pick image.",
+        topOffset: TOAST_OFFSET,
+      });
     }
   };
 
@@ -194,25 +213,55 @@ export default function UserProfile({ navigation, route }) {
           cb(data.user);
         }
 
-        Alert.alert("Success", data.message);
+        // Toast with topOffset
+        Toast.show({
+          type: "success",
+          text1: "Success",
+          text2: data.message,
+          topOffset: TOAST_OFFSET,
+        });
         setEditing(false);
       } else {
-        Alert.alert("Error", data.message || "Failed to update profile.");
+        // Toast with topOffset
+        Toast.show({
+          type: "error",
+          text1: "Error",
+          text2: data.message || "Failed to update profile.",
+          topOffset: TOAST_OFFSET,
+        });
       }
     } catch (e) {
       console.error("handleUpdateProfile error:", e);
-      Alert.alert("Error", "An error occurred while updating.");
+      // Toast with topOffset
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "An error occurred while updating.",
+        topOffset: TOAST_OFFSET,
+      });
     }
   };
 
   // --- 4. Handle Password Change (Save Button) ---
   const handlePasswordChange = async () => {
     if (!oldPassword || !newPassword || !confirmPassword) {
-      Alert.alert("Error", "Please fill all password fields.");
+      // Toast with topOffset
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Please fill all password fields.",
+        topOffset: TOAST_OFFSET,
+      });
       return;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert("Error", "New password and confirmation do not match.");
+      // Toast with topOffset
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "New password and confirmation do not match.",
+        topOffset: TOAST_OFFSET,
+      });
       return;
     }
 
@@ -230,17 +279,35 @@ export default function UserProfile({ navigation, route }) {
       const data = await response.json();
 
       if (response.ok) {
-        Alert.alert("Success", data.message);
+        // Toast with topOffset
+        Toast.show({
+          type: "success",
+          text1: "Success",
+          text2: data.message,
+          topOffset: TOAST_OFFSET,
+        });
         setOldPassword("");
         setNewPassword("");
         setConfirmPassword("");
         setShowPassword(false);
       } else {
-        Alert.alert("Error", data.message || "Password change failed.");
+        // Toast with topOffset
+        Toast.show({
+          type: "error",
+          text1: "Error",
+          text2: data.message || "Password change failed.",
+          topOffset: TOAST_OFFSET,
+        });
       }
     } catch (e) {
       console.error("handlePasswordChange error:", e);
-      Alert.alert("Error", "Could not connect to server.");
+      // Toast with topOffset
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Could not connect to server.",
+        topOffset: TOAST_OFFSET,
+      });
     }
   };
 
@@ -248,9 +315,27 @@ export default function UserProfile({ navigation, route }) {
   const handleLogout = async () => {
     try {
       await AsyncStorage.removeItem("user");
-      navigation.reset({ index: 0, routes: [{ name: "Login" }] });
+      // Add success toast on logout with topOffset
+      Toast.show({
+        type: "success",
+        text1: "Logged Out",
+        text2: "You have successfully logged out.",
+        topOffset: TOAST_OFFSET,
+      });
+      // Delay navigation to ensure the toast has time to render
+      setTimeout(() => {
+        navigation.reset({ index: 0, routes: [{ name: "Login" }] });
+      }, 500);
+      
     } catch (e) {
       console.error("Logout error:", e);
+      // Toast with topOffset
+      Toast.show({
+        type: "error",
+        text1: "Logout Error",
+        text2: "Failed to log out. Please try again.",
+        topOffset: TOAST_OFFSET,
+      });
     }
   };
 

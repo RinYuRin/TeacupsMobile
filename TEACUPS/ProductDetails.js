@@ -6,10 +6,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
+import Toast from "react-native-toast-message";
 import API from "./api";
 
 const ProductDetails = ({ navigation, route }) => {
@@ -17,11 +17,8 @@ const ProductDetails = ({ navigation, route }) => {
 
   const [selectedSize, setSelectedSize] = useState("Regular");
   const [addons, setAddons] = useState([]);
-  
-  // State for add-ons fetched from DB
   const [availableAddons, setAvailableAddons] = useState([]);
 
-  // Get prices from product.prices if available, fallback to default
   const hasSizes = !!product.prices;
   const sizePrices = product.prices || { regular: product.price };
   const sizes = hasSizes
@@ -33,33 +30,32 @@ const ProductDetails = ({ navigation, route }) => {
       ].filter((s) => s.price !== undefined)
     : [{ label: "Regular", price: product.price }];
 
-  // --- Fetch Add-ons from Database ---
   useEffect(() => {
     const fetchAddons = async () => {
       try {
-        // Fetch all products
         const res = await fetch(`${API.baseURL}/product/fetch`);
         const allProducts = await res.json();
 
-        // Filter for "ADDS ON" and format to match the component's needs
         const formattedAddons = allProducts
           .filter((p) => p.category.toUpperCase() === "ADDS ON")
           .map((p) => ({
             label: p.name,
-            price: Number(p.priceS) || 0, // Use priceS as the add-on price
+            price: Number(p.priceS) || 0,
           }));
-          
+
         setAvailableAddons(formattedAddons);
       } catch (err) {
         console.error("Failed to fetch add-ons:", err);
-        Alert.alert("Error", "Could not load add-ons from the server.");
+        Toast.show({
+          type: "error",
+          text1: "Error",
+          text2: "Could not load add-ons from the server.",
+        });
       }
     };
 
     fetchAddons();
-  }, []); // Empty array means this runs once on mount
-
-  // --- (Hardcoded list is removed) ---
+  }, []);
 
   const toggleAddon = (addon) => {
     if (addons.includes(addon)) {
@@ -69,7 +65,6 @@ const ProductDetails = ({ navigation, route }) => {
     }
   };
 
-  // Compute total price
   const sizePrice =
     sizes.find((s) => s.label === selectedSize)?.price || product.price;
   const addonsPrice = addons.reduce(
@@ -81,14 +76,14 @@ const ProductDetails = ({ navigation, route }) => {
 
   const handleAddToCart = async () => {
     try {
-      // ✅ Retrieve user from AsyncStorage
       const storedUser = await AsyncStorage.getItem("user");
 
       if (!storedUser) {
-        Alert.alert(
-          "Login Required",
-          "Please log in before adding to cart."
-        );
+        Toast.show({
+          type: "error",
+          text1: "Login Required",
+          text2: "Please log in before adding to cart.",
+        });
         return;
       }
 
@@ -97,20 +92,26 @@ const ProductDetails = ({ navigation, route }) => {
         user = JSON.parse(storedUser);
       } catch (parseError) {
         console.error("Error parsing stored user:", parseError);
-        Alert.alert("Error", "Invalid stored user data. Please log in again.");
+        Toast.show({
+          type: "error",
+          text1: "Error",
+          text2: "Invalid stored user data. Please log in again.",
+        });
         return;
       }
 
-      // ✅ Ensure user object has an _id
       if (!user || !user._id) {
         console.error("Invalid user data:", user);
-        Alert.alert("Error", "User ID not found. Please log in again.");
+        Toast.show({
+          type: "error",
+          text1: "Error",
+          text2: "User ID not found. Please log in again.",
+        });
         return;
       }
 
       console.log("Sending Add to Cart for user:", user._id);
 
-      // ✅ Send the data to backend
       const response = await fetch(`${API.baseURL}/cart/add`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -130,20 +131,31 @@ const ProductDetails = ({ navigation, route }) => {
       const data = await response.json();
 
       if (response.ok) {
-        Alert.alert("Added to Cart", `${product.name} added successfully.`);
+        Toast.show({
+          type: "success",
+          text1: "Added to Cart",
+          text2: `${product.name} added successfully.`,
+        });
       } else {
         console.error("Server error:", data);
-        Alert.alert("Error", data.message || "Failed to add to cart.");
+        Toast.show({
+          type: "error",
+          text1: "Error",
+          text2: data.message || "Failed to add to cart.",
+        });
       }
     } catch (error) {
       console.error("Add to cart failed:", error);
-      Alert.alert("Error", "Unable to connect to server.");
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Unable to connect to server.",
+      });
     }
   };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={28} color="#000" />
@@ -152,7 +164,6 @@ const ProductDetails = ({ navigation, route }) => {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Product Image */}
         <View style={styles.imageContainer}>
           <Image source={{ uri: product.image }} style={styles.image} />
           <View style={styles.ratingBadge}>
@@ -160,14 +171,12 @@ const ProductDetails = ({ navigation, route }) => {
           </View>
         </View>
 
-        {/* Product Details */}
         <Text style={styles.productName}>{product.name}</Text>
         <Text style={styles.productDescription}>
           {product.description ||
-            "Indulge in the perfect balance of rich, creamy milk and freshly brewed tea, blended to create a smooth and refreshing taste that lingers with every sip. Crafted with care, this drink is more than just milk tea — it’s a comforting escape in a cup, designed to brighten your day and satisfy your cravings."}
+            "Indulge in the perfect balance of rich, creamy milk and freshly brewed tea, blended to create a smooth and refreshing taste that lingers with every sip."}
         </Text>
 
-        {/* Size Selection */}
         {hasSizes && (
           <>
             <Text style={styles.sectionTitle}>Size</Text>
@@ -195,7 +204,6 @@ const ProductDetails = ({ navigation, route }) => {
           </>
         )}
 
-        {/* Add-ons (Now rendered from state) */}
         <Text style={styles.sectionTitle}>Add-ons</Text>
         <View style={styles.addonContainer}>
           {availableAddons.map((addon) => (
@@ -220,7 +228,6 @@ const ProductDetails = ({ navigation, route }) => {
         </View>
       </ScrollView>
 
-      {/* Footer */}
       <View style={styles.footer}>
         <Text style={styles.price}>₱{totalPrice}</Text>
         <TouchableOpacity
@@ -230,6 +237,9 @@ const ProductDetails = ({ navigation, route }) => {
           <Text style={styles.addToCartText}>Add to Cart</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Toast Component */}
+      <Toast />
     </View>
   );
 };

@@ -11,12 +11,13 @@ import {
   StatusBar as RNStatusBar,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import Toast from "react-native-toast-message";
+import AsyncStorage from "@react-native-async-storage/async-storage"
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import API from "./api";
+
 
 SplashScreen.preventAutoHideAsync();
 
@@ -38,18 +39,7 @@ export default function LoginScreen({ navigation }) {
     }
   }, [fontsLoaded]);
 
-  const showToast = (type, title, message) => {
-    Toast.show({
-      type,
-      text1: title,
-      text2: message,
-      position: "top",
-      visibilityTime: 2500,
-      topOffset: 50,
-    });
-  };
-
-  const handleLogin = async () => {
+const handleLogin = async () => {
     try {
       const response = await fetch(`${API.baseURL}/login`, {
         method: "POST",
@@ -62,43 +52,62 @@ export default function LoginScreen({ navigation }) {
       if (response.ok) {
         if (data.user) {
           await AsyncStorage.setItem("user", JSON.stringify(data.user));
-          showToast(
-            "success",
+          Alert.alert(
             "Login Successful",
             `Welcome back, ${data.user.username || data.user.email}!`
           );
 
-          // Navigation based on role
-          setTimeout(() => {
-            if (data.user.role === "admin") {
-              navigation.navigate("Dashboard");
-            } else {
-              navigation.navigate("Userhome");
-            }
-          }, 1500);
+          // --- NAVIGATION LOGIC ---
+          // Check the role from the response and navigate
+          if (data.user.role === "admin") {
+            navigation.navigate("Dashboard"); // Navigate to Admin Dashboard
+          } else {
+            navigation.navigate("Userhome"); // Navigate to User Home
+          }
+          // --- END NAVIGATION LOGIC ---
         } else {
-          showToast("error", "Error", "User data missing in response.");
+          Alert.alert("Error", "User data missing in response.");
         }
       } else {
-        showToast("error", "Login Failed", data.message || "Invalid credentials.");
+        // Show error message from backend
+        Alert.alert("Login Failed", data.message || "Invalid email or password.");
       }
     } catch (error) {
-      showToast("error", "Network Error", "Unable to connect to server.");
+      Alert.alert("Network error", "Could not connect to server: " + error.message);
     }
   };
 
-  const handleForgotPassword = () => navigation.navigate("ForgotPassword");
-  const handleSignUp = () => navigation.navigate("SignUp");
+  const handleForgotPassword = () => {
+    navigation.navigate("ForgotPassword");
+  };
 
-  if (!fontsLoaded) return null;
+  const handleSignUp = () => {
+    navigation.navigate("SignUp");
+  };
+
+  if (!fontsLoaded) {
+    return null;
+  }
 
   return (
     <View style={styles.fullScreenContainer} onLayout={onLayoutRootView}>
-      <Image source={require("./assets/image/image1.png")} style={styles.bgIconLeft} resizeMode="contain" />
-      <Image source={require("./assets/image/image2.png")} style={styles.bgIconRight} resizeMode="contain" />
+      <Image
+        source={require("./assets/image/image1.png")}
+        style={styles.bgIconLeft}
+        resizeMode="contain"
+      />
+      <Image
+        source={require("./assets/image/image2.png")}
+        style={styles.bgIconRight}
+        resizeMode="contain"
+      />
       <RNStatusBar barStyle="light-content" backgroundColor="#806153" />
-
-      <KeyboardAvoidingView style={styles.keyboardAvoidingContainer} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+      <View style={styles.headerBar} />
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoidingContainer}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={0}
+      >
         <ScrollView contentContainerStyle={styles.scrollViewContent}>
           <View style={styles.topIllustrationContainer}>
             <Image source={require("./assets/image/coffe.png")} style={styles.topIllustration} />
@@ -107,7 +116,6 @@ export default function LoginScreen({ navigation }) {
               <Text style={styles.toContinueText}>TO CONTINUE</Text>
             </View>
           </View>
-
           <View style={styles.formContainer}>
             <View style={styles.inputGroup}>
               <TextInput
@@ -115,11 +123,12 @@ export default function LoginScreen({ navigation }) {
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
                 placeholder="Email"
                 placeholderTextColor="#555"
               />
             </View>
-
             <View style={styles.inputGroup}>
               <View style={styles.passwordInputWrapper}>
                 <TextInput
@@ -142,16 +151,13 @@ export default function LoginScreen({ navigation }) {
                 </TouchableOpacity>
               </View>
             </View>
-
             <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotPasswordLink}>
               <Text style={styles.forgotPasswordText}>forgot password?</Text>
             </TouchableOpacity>
-
             <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
               <Text style={styles.loginButtonText}>LOG IN</Text>
             </TouchableOpacity>
           </View>
-
           <View style={styles.signUpContainer}>
             <Text style={styles.signUpText}>Don't have an account? </Text>
             <TouchableOpacity onPress={handleSignUp}>
@@ -160,9 +166,6 @@ export default function LoginScreen({ navigation }) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* Toast UI */}
-      <Toast />
     </View>
   );
 }
@@ -335,4 +338,3 @@ const styles = StyleSheet.create({
     zIndex: 0,
   },
 });
-

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -17,6 +17,9 @@ const ProductDetails = ({ navigation, route }) => {
 
   const [selectedSize, setSelectedSize] = useState("Regular");
   const [addons, setAddons] = useState([]);
+  
+  // State for add-ons fetched from DB
+  const [availableAddons, setAvailableAddons] = useState([]);
 
   // Get prices from product.prices if available, fallback to default
   const hasSizes = !!product.prices;
@@ -30,21 +33,33 @@ const ProductDetails = ({ navigation, route }) => {
       ].filter((s) => s.price !== undefined)
     : [{ label: "Regular", price: product.price }];
 
-  const availableAddons = [
-    { label: "Cashew Nuts", price: 10 },
-    { label: "Candy Toppings", price: 15 },
-    { label: "Coffee Jelly", price: 10 },
-    { label: "Cheesecake", price: 15 },
-    { label: "Fruit Jelly", price: 10 },
-    { label: "Cream Cheese", price: 15 },
-    { label: "Nata", price: 10 },
-    { label: "Crushed Oreo", price: 15 },
-    { label: "Tapioca Pearl", price: 10 },
-    { label: "Espresso", price: 15 },
-    { label: "Popping Bobba", price: 10 },
-    { label: "Marshmallows", price: 15 },
-    { label: "Cream Puff", price: 15 },
-  ];
+  // --- Fetch Add-ons from Database ---
+  useEffect(() => {
+    const fetchAddons = async () => {
+      try {
+        // Fetch all products
+        const res = await fetch(`${API.baseURL}/product/fetch`);
+        const allProducts = await res.json();
+
+        // Filter for "ADDS ON" and format to match the component's needs
+        const formattedAddons = allProducts
+          .filter((p) => p.category.toUpperCase() === "ADDS ON")
+          .map((p) => ({
+            label: p.name,
+            price: Number(p.priceS) || 0, // Use priceS as the add-on price
+          }));
+          
+        setAvailableAddons(formattedAddons);
+      } catch (err) {
+        console.error("Failed to fetch add-ons:", err);
+        Alert.alert("Error", "Could not load add-ons from the server.");
+      }
+    };
+
+    fetchAddons();
+  }, []); // Empty array means this runs once on mount
+
+  // --- (Hardcoded list is removed) ---
 
   const toggleAddon = (addon) => {
     if (addons.includes(addon)) {
@@ -64,67 +79,67 @@ const ProductDetails = ({ navigation, route }) => {
   );
   const totalPrice = sizePrice + addonsPrice;
 
-const handleAddToCart = async () => {
-  try {
-    // ✅ Retrieve user from AsyncStorage
-    const storedUser = await AsyncStorage.getItem("user");
-
-    if (!storedUser) {
-      Alert.alert(
-        "Login Required",
-        "Please log in before adding to cart."
-      );
-      return;
-    }
-
-    let user;
+  const handleAddToCart = async () => {
     try {
-      user = JSON.parse(storedUser);
-    } catch (parseError) {
-      console.error("Error parsing stored user:", parseError);
-      Alert.alert("Error", "Invalid stored user data. Please log in again.");
-      return;
+      // ✅ Retrieve user from AsyncStorage
+      const storedUser = await AsyncStorage.getItem("user");
+
+      if (!storedUser) {
+        Alert.alert(
+          "Login Required",
+          "Please log in before adding to cart."
+        );
+        return;
+      }
+
+      let user;
+      try {
+        user = JSON.parse(storedUser);
+      } catch (parseError) {
+        console.error("Error parsing stored user:", parseError);
+        Alert.alert("Error", "Invalid stored user data. Please log in again.");
+        return;
+      }
+
+      // ✅ Ensure user object has an _id
+      if (!user || !user._id) {
+        console.error("Invalid user data:", user);
+        Alert.alert("Error", "User ID not found. Please log in again.");
+        return;
+      }
+
+      console.log("Sending Add to Cart for user:", user._id);
+
+      // ✅ Send the data to backend
+      const response = await fetch(`${API.baseURL}/cart/add`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user._id,
+          email: user.email,
+          productId: product._id || product.id,
+          name: product.name,
+          image: product.image,
+          selectedSize,
+          addons,
+          totalPrice,
+          quantity: 1,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        Alert.alert("Added to Cart", `${product.name} added successfully.`);
+      } else {
+        console.error("Server error:", data);
+        Alert.alert("Error", data.message || "Failed to add to cart.");
+      }
+    } catch (error) {
+      console.error("Add to cart failed:", error);
+      Alert.alert("Error", "Unable to connect to server.");
     }
-
-    // ✅ Ensure user object has an _id
-    if (!user || !user._id) {
-      console.error("Invalid user data:", user);
-      Alert.alert("Error", "User ID not found. Please log in again.");
-      return;
-    }
-
-    console.log("Sending Add to Cart for user:", user._id);
-
-    // ✅ Send the data to backend
-    const response = await fetch(`${API.baseURL}/cart/add`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        userId: user._id,
-        email: user.email,
-        productId: product._id || product.id,
-        name: product.name,
-        image: product.image,
-        selectedSize,
-        addons,
-        totalPrice,
-        quantity: 1,
-      }),
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      Alert.alert("Added to Cart", `${product.name} added successfully.`);
-    } else {
-      console.error("Server error:", data);
-      Alert.alert("Error", data.message || "Failed to add to cart.");
-    }
-  } catch (error) {
-    console.error("Add to cart failed:", error);
-    Alert.alert("Error", "Unable to connect to server.");
-  }
-};
+  };
 
   return (
     <View style={styles.container}>
@@ -180,7 +195,7 @@ const handleAddToCart = async () => {
           </>
         )}
 
-        {/* Add-ons */}
+        {/* Add-ons (Now rendered from state) */}
         <Text style={styles.sectionTitle}>Add-ons</Text>
         <View style={styles.addonContainer}>
           {availableAddons.map((addon) => (
