@@ -13,15 +13,53 @@ import {
   Platform,
   useColorScheme,
   useWindowDimensions,
+  Modal, // 1. Import Modal
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import API from "./api"; // Import your API config
+import API from "./api";
+
+// 2. Add placeholder text for the modal
+const TERMS_AND_CONDITIONS_TEXT = `Welcome to TeaCUPS!
+\n\n
+These Terms and Conditions ("Terms") govern your access to and use of the TeaCUPS mobile application (the "App"). By accessing or using the App, you confirm that you have read, understood, and agree to be bound by these Terms.
+\n\n
+1. Account Registration
+To access the App’s features, you must create an account by providing a valid email address and password. You are responsible for maintaining the confidentiality of your account credentials.
+\n
+2. App Features
+The TeaCUPS App includes functions for browsing, ordering, and managing items.
+\n
+3. Orders and Checkout
+Users may browse menu items and place orders. All orders are subject to availability and confirmation.
+\n
+4. User Responsibilities
+You agree to use the App only for lawful purposes and in accordance with these Terms. You agree not to interfere with the App’s functionality or security.
+\n
+5. Privacy
+Your use of the App is also governed by our Privacy Policy, which explains how we collect, store, and use your personal information.
+\n
+6. Intellectual Property
+All logos, trademarks, and content in the TeaCUPS App are owned or licensed by TeaCUPS.
+\n
+7. Account Termination
+We reserve the right to suspend or terminate any user account at any time for breach of these Terms.
+\n
+8. Limitation of Liability
+To the fullest extent permitted by law, TeaCUPS shall not be liable for any damages arising from the use or inability to use the App.
+\n
+9. Modifications to Terms
+TeaCUPS may update these Terms at any time. Continued use of the App means you accept the updated Terms.
+\n\n
+Contact Us
+If you have questions or concerns regarding these Terms, please contact us at support@teacups.com.
+`;
 
 export default function UserProfile({ navigation, route }) {
-  const [editing, setEditing] =useState(false);
+  const [editing, setEditing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  
+  const [showTermsModal, setShowTermsModal] = useState(false); // 3. Add state for modal
+
   // State for user ID
   const [userId, setUserId] = useState(null);
 
@@ -42,7 +80,10 @@ export default function UserProfile({ navigation, route }) {
 
   const colorScheme = useColorScheme();
   const { width, height } = useWindowDimensions();
-  const styles = useMemo(() => createStyles(width, colorScheme), [width, colorScheme]);
+  const styles = useMemo(
+    () => createStyles(width, colorScheme),
+    [width, colorScheme]
+  );
 
   // --- 1. Load User Data on Mount ---
   useEffect(() => {
@@ -74,9 +115,13 @@ export default function UserProfile({ navigation, route }) {
   // --- 2. Image Picker ---
   const pickImage = async () => {
     try {
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const permissionResult =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permissionResult.granted) {
-        Alert.alert("Permission Required", "You need to allow access to your photos.");
+        Alert.alert(
+          "Permission Required",
+          "You need to allow access to your photos."
+        );
         return;
       }
 
@@ -89,7 +134,6 @@ export default function UserProfile({ navigation, route }) {
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const uri = result.assets[0].uri;
         setProfileImage(uri); // Set new image for display
-        // We won't update editProfile.image here, we'll handle the URI in handleUpdateProfile
       }
     } catch (err) {
       console.error("pickImage error:", err);
@@ -113,25 +157,18 @@ export default function UserProfile({ navigation, route }) {
 
       // Check if the profileImage is a *new* local image (i.e., not an http url)
       if (profileImage && !profileImage.startsWith("http")) {
-        
-        if (Platform.OS === 'web') {
+        if (Platform.OS === "web") {
           // --- WEB UPLOAD ---
-          // 1. Convert the local URI (blob: or data:) to a Blob
           const response = await fetch(profileImage);
           const blob = await response.blob();
-          
-          // 2. Get the file type from the Blob
-          const fileType = blob.type.split('/')[1] || 'jpg';
+          const fileType = blob.type.split("/")[1] || "jpg";
           const fileName = `profile.${fileType}`;
-
-          // 3. Append the Blob as a file
           formData.append("image", blob, fileName);
-
         } else {
-          // --- NATIVE UPLOAD (Your original code) ---
+          // --- NATIVE UPLOAD ---
           const fileType = profileImage.split(".").pop().split("?")[0];
-          let mimeType = `image/${fileType === 'jpg' ? 'jpeg' : fileType}`;
-          
+          let mimeType = `image/${fileType === "jpg" ? "jpeg" : fileType}`;
+
           formData.append("image", {
             uri: profileImage,
             name: `profile.${fileType}`,
@@ -217,7 +254,6 @@ export default function UserProfile({ navigation, route }) {
     }
   };
 
-
   return (
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView
@@ -235,19 +271,29 @@ export default function UserProfile({ navigation, route }) {
             >
               <Image
                 source={
-                  profileImage ? { uri: profileImage } : require("./assets/profile.png")
+                  profileImage
+                    ? { uri: profileImage }
+                    : require("./assets/profile.png")
                 }
                 style={styles.profileImage}
                 resizeMode="cover"
               />
-              {editing && <Text style={styles.uploadText}>Tap to change photo</Text>}
+              {editing && (
+                <Text style={styles.uploadText}>Tap to change photo</Text>
+              )}
             </TouchableOpacity>
 
             {/* Display data from state */}
             <View style={styles.headerRight}>
-              <Text style={styles.nameText}>{editProfile.username || "Your Name"}</Text>
-              <Text style={styles.emailText}>{editProfile.email || "your@email.com"}</Text>
-              {editProfile.address ? <Text style={styles.emailText}>{editProfile.address}</Text> : null}
+              <Text style={styles.nameText}>
+                {editProfile.username || "Your Name"}
+              </Text>
+              <Text style={styles.emailText}>
+                {editProfile.email || "your@email.com"}
+              </Text>
+              {editProfile.address ? (
+                <Text style={styles.emailText}>{editProfile.address}</Text>
+              ) : null}
             </View>
           </View>
 
@@ -256,31 +302,48 @@ export default function UserProfile({ navigation, route }) {
             <>
               {/* ... (Other options: Edit Profile, Change Password, etc.) ... */}
               <Text style={styles.sectionTitle}>General</Text>
-              <TouchableOpacity style={styles.option} onPress={() => setEditing(true)}>
+              <TouchableOpacity
+                style={styles.option}
+                onPress={() => setEditing(true)}
+              >
                 <Text style={styles.optionText}>Edit Profile</Text>
-                <Text style={styles.subText}>Change profile picture, number, E-mail</Text>
+                <Text style={styles.subText}>
+                  Change profile picture, number, E-mail
+                </Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.option} onPress={() => setShowPassword(true)}>
+              <TouchableOpacity
+                style={styles.option}
+                onPress={() => setShowPassword(true)}
+              >
                 <Text style={styles.optionText}>Change Password</Text>
-                <Text style={styles.subText}>Update and strengthen account security</Text>
+                <Text style={styles.subText}>
+                  Update and strengthen account security
+                </Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.option}>
+              {/* 4. Hook up the onPress event */}
+              <TouchableOpacity
+                style={styles.option}
+                onPress={() => setShowTermsModal(true)}
+              >
                 <Text style={styles.optionText}>Terms of Use</Text>
-                <Text style={styles.subText}>Read our terms and conditions</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.option}>
-                <Text style={styles.optionText}>Bind GCash</Text>
-                <Text style={styles.subText}>Securely bind GCash for payment</Text>
+                <Text style={styles.subText}>
+                  Read our terms and conditions
+                </Text>
               </TouchableOpacity>
               <View style={styles.rowBetween}>
-                <TouchableOpacity style={styles.button} onPress={() => navigation.goBack()}>
+                <TouchableOpacity
+                  style={styles.button}
+                  onPress={() => navigation.goBack()}
+                >
                   <Text style={styles.buttonText}>Back</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.button, styles.logoutButton]}
                   onPress={handleLogout} // Use new logout function
                 >
-                  <Text style={[styles.buttonText, styles.logoutText]}>Logout</Text>
+                  <Text style={[styles.buttonText, styles.logoutText]}>
+                    Logout
+                  </Text>
                 </TouchableOpacity>
               </View>
             </>
@@ -296,14 +359,18 @@ export default function UserProfile({ navigation, route }) {
                   placeholder="Name"
                   placeholderTextColor={styles.placeholderColor.color}
                   value={editProfile.username}
-                  onChangeText={(t) => setEditProfile({ ...editProfile, username: t })}
+                  onChangeText={(t) =>
+                    setEditProfile({ ...editProfile, username: t })
+                  }
                 />
                 <TextInput
                   style={[styles.input, styles.halfInput]}
                   placeholder="Nickname"
                   placeholderTextColor={styles.placeholderColor.color}
                   value={editProfile.nickname}
-                  onChangeText={(t) => setEditProfile({ ...editProfile, nickname: t })}
+                  onChangeText={(t) =>
+                    setEditProfile({ ...editProfile, nickname: t })
+                  }
                 />
               </View>
               {/* ... (Email, Phone, Address inputs) ... */}
@@ -313,7 +380,9 @@ export default function UserProfile({ navigation, route }) {
                   placeholder="Email"
                   placeholderTextColor={styles.placeholderColor.color}
                   value={editProfile.email}
-                  onChangeText={(t) => setEditProfile({ ...editProfile, email: t })}
+                  onChangeText={(t) =>
+                    setEditProfile({ ...editProfile, email: t })
+                  }
                   keyboardType="email-address"
                 />
                 <TextInput
@@ -321,7 +390,9 @@ export default function UserProfile({ navigation, route }) {
                   placeholder="Phone"
                   placeholderTextColor={styles.placeholderColor.color}
                   value={editProfile.phone}
-                  onChangeText={(t) => setEditProfile({ ...editProfile, phone: t })}
+                  onChangeText={(t) =>
+                    setEditProfile({ ...editProfile, phone: t })
+                  }
                   keyboardType="phone-pad"
                 />
               </View>
@@ -330,7 +401,9 @@ export default function UserProfile({ navigation, route }) {
                 placeholder="Address"
                 placeholderTextColor={styles.placeholderColor.color}
                 value={editProfile.address}
-                onChangeText={(t) => setEditProfile({ ...editProfile, address: t })}
+                onChangeText={(t) =>
+                  setEditProfile({ ...editProfile, address: t })
+                }
               />
 
               <View style={styles.rowBetween}>
@@ -340,7 +413,10 @@ export default function UserProfile({ navigation, route }) {
                 >
                   <Text style={styles.buttonText}>Save</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.button} onPress={() => setEditing(false)}>
+                <TouchableOpacity
+                  style={styles.button}
+                  onPress={() => setEditing(false)}
+                >
                   <Text style={styles.buttonText}>Back</Text>
                 </TouchableOpacity>
               </View>
@@ -382,7 +458,10 @@ export default function UserProfile({ navigation, route }) {
                 >
                   <Text style={styles.buttonText}>Save</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.button} onPress={() => setShowPassword(false)}>
+                <TouchableOpacity
+                  style={styles.button}
+                  onPress={() => setShowPassword(false)}
+                >
                   <Text style={styles.buttonText}>Back</Text>
                 </TouchableOpacity>
               </View>
@@ -390,11 +469,36 @@ export default function UserProfile({ navigation, route }) {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* 5. Add the Modal component */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showTermsModal}
+        onRequestClose={() => setShowTermsModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Terms of Use</Text>
+            <ScrollView style={styles.modalScrollView}>
+              <Text style={styles.modalText}>
+                {TERMS_AND_CONDITIONS_TEXT}
+              </Text>
+            </ScrollView>
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => setShowTermsModal(false)}
+            >
+              <Text style={styles.modalCloseText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
-// ... (createStyles function remains unchanged)
+// 6. Add Modal styles
 function createStyles(width, colorScheme) {
   const isLarge = width >= 700;
   const bg = colorScheme === "dark" ? "#0B0B0B" : "#fff";
@@ -443,7 +547,12 @@ function createStyles(width, colorScheme) {
     },
     nameText: { fontSize: isLarge ? 22 : 18, fontWeight: "bold", color: text },
     emailText: { fontSize: isLarge ? 16 : 14, color: subText },
-    sectionTitle: { fontSize: isLarge ? 22 : 20, fontWeight: "bold", marginBottom: 16, color: text },
+    sectionTitle: {
+      fontSize: isLarge ? 22 : 20,
+      fontWeight: "bold",
+      marginBottom: 16,
+      color: text,
+    },
     option: {
       padding: 15,
       borderWidth: 1,
@@ -475,7 +584,11 @@ function createStyles(width, colorScheme) {
     buttonText: { color: "#1f1f1f", fontWeight: "600" },
     logoutButton: { backgroundColor: "#D9534F" },
     logoutText: { color: "#fff" },
-    rowBetween: { flexDirection: "row", justifyContent: "space-between", marginTop: 6 },
+    rowBetween: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginTop: 6,
+    },
     formRow: {
       flexDirection: isLarge ? "row" : "column",
       justifyContent: "space-between",
@@ -483,6 +596,52 @@ function createStyles(width, colorScheme) {
     halfInput: {
       flex: 1,
       marginRight: isLarge ? 12 : 0,
+    },
+
+    // --- Modal Styles ---
+    modalOverlay: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "rgba(0,0,0,0.5)",
+    },
+    modalContent: {
+      backgroundColor: bg,
+      padding: 22,
+      borderRadius: 12,
+      width: "90%",
+      maxHeight: "80%",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: "bold",
+      marginBottom: 15,
+      textAlign: "center",
+      color: text,
+    },
+    modalScrollView: {
+      marginVertical: 10,
+    },
+    modalText: {
+      fontSize: 14,
+      color: subText,
+      lineHeight: 20,
+    },
+    modalCloseButton: {
+      backgroundColor: "#E2C7AE",
+      padding: 12,
+      borderRadius: 8,
+      alignItems: "center",
+      marginTop: 15,
+    },
+    modalCloseText: {
+      color: "#1f1f1f",
+      fontWeight: "600",
     },
   });
 }

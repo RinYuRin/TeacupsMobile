@@ -22,17 +22,15 @@ export default function NotificationsPanel() {
   // Function to fetch user and their orders
   const loadData = useCallback(async () => {
     try {
-      // 1. Get User from AsyncStorage
-      let currentUser = user;
-      if (!currentUser) {
-        const storedUser = await AsyncStorage.getItem("user");
-        if (!storedUser) {
-          setLoading(false);
-          return; // No user logged in
-        }
-        currentUser = JSON.parse(storedUser);
-        setUser(currentUser);
+      // ALWAYS get user from AsyncStorage to check for updates
+      const storedUser = await AsyncStorage.getItem("user");
+      if (!storedUser) {
+        setLoading(false);
+        return; // No user logged in
       }
+
+      const currentUser = JSON.parse(storedUser);
+      setUser(currentUser); // Set state with fresh data
 
       if (!currentUser || !currentUser._id) {
         setLoading(false);
@@ -53,7 +51,12 @@ export default function NotificationsPanel() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user]); // Depend on 'user' state
+  }, []); // Use empty dependency array to prevent loops
+
+  // This is the correct display logic
+  const displayName =
+    user?.nickname ||
+    (user?.username && user.username !== user.email ? user.username : null);
 
   // Initial load
   useEffect(() => {
@@ -75,9 +78,6 @@ export default function NotificationsPanel() {
     setRefreshing(true);
     loadData();
   }, [loadData]);
-
-  // 3. Get the display name: username, nickname, or fallback to email
-  const displayName = user?.username || user?.nickname || user?.email || "Customer";
 
   if (loading && !refreshing) {
     return (
@@ -115,10 +115,15 @@ export default function NotificationsPanel() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
         >
-          {/* 4. Map over all orders */}
+          {/* Map over all orders */}
           {orders.map((order) => (
             <View key={order._id} style={styles.card}>
-              <Text style={styles.receiptName}>Customer: {displayName}</Text>
+              {/* Only show customer name if it exists */}
+              {displayName && (
+                <Text style={styles.receiptName}>
+                  Customer: {displayName}
+                </Text>
+              )}
               <Text style={styles.status}>
                 Status:{" "}
                 <Text
@@ -138,8 +143,8 @@ export default function NotificationsPanel() {
                 Ordered at: {new Date(order.createdAt).toLocaleString()}
               </Text>
               <Text style={styles.subtitle}>Items:</Text>
-              
-              {/* 5. Map over items in *this* order */}
+
+              {/* Map over items in *this* order */}
               {order.items.map((item, idx) => (
                 <View key={idx} style={styles.itemRow}>
                   <Text style={styles.itemName} numberOfLines={1}>
@@ -151,8 +156,8 @@ export default function NotificationsPanel() {
                   </Text>
                 </View>
               ))}
-              
-              {/* 6. Use grandTotal from the order object */}
+
+              {/* Use grandTotal from the order object */}
               <Text style={styles.totalPrice}>Total: ₱{order.grandTotal}</Text>
             </View>
           ))}

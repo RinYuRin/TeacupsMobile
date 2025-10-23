@@ -1,4 +1,4 @@
-const LOCAL_IP = "10.149.21.135";
+const LOCAL_IP = "192.168.0.194";
 const PORT = "5001";
 
 export default {

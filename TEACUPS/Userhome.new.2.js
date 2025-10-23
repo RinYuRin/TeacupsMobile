@@ -86,14 +86,7 @@ export default function Userhome({ navigation }) {
       try {
         const res = await fetch(`${API.baseURL}/product/fetch`);
         const data = await res.json();
-        // --- ADD THIS FILTER ---
-        // We use toUpperCase() for a case-insensitive check
-        const filteredData = data.filter(
-          (product) => product.category.toUpperCase() !== "ADDS ON"
-        );
-        // -----------------------
-
-        setProducts(filteredData); //
+        setProducts(data);
       } catch (err) {
         console.error("Failed to fetch products", err);
       }

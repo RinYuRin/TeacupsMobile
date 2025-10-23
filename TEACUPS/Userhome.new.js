@@ -24,14 +24,10 @@ import {
   Bell,
   User,
   Scan,
-  CheckSquare,
-  Square,
-  X,
 } from "lucide-react-native";
 import AddToCharts from "./addtocharts";
 import NotificationsPanel from "./NotificationsPanel";
 import LogoImg from "./assets/icon.png";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import API from "./api";
 
 const { width } = Dimensions.get("window");
@@ -63,37 +59,15 @@ export default function Userhome({ navigation }) {
     }
   }, []);
 
-  // --- Data States ---
-  const [products, setProducts] = useState([]); // Master list from backend
-  const [profile, setProfile] = useState(null);
+  // backend products
+  const [products, setProducts] = useState([]);
 
-  // --- UI States ---
-  const [activeTab, setActiveTab] = useState("home");
-  const [searchText, setSearchText] = useState("");
-  const [sortPanelVisible, setSortPanelVisible] = useState(false);
-  const [filterPanelVisible, setFilterPanelVisible] = useState(false);
-  const [sortType, setSortType] = useState(null); // 'star', 'trending'
-  const [selectedCategories, setSelectedCategories] = useState([]); // Array of category names
-
-  // --- Scanner States ---
-  const [scannerVisible, setScannerVisible] = useState(false);
-  const [scanned, setScanned] = useState(false);
-  const [BarCodeScannerComp, setBarCodeScannerComp] = useState(null);
-
-  // --- 1. Fetch Products from Backend ---
   useEffect(() => {
     async function fetchProducts() {
       try {
         const res = await fetch(`${API.baseURL}/product/fetch`);
         const data = await res.json();
-        // --- ADD THIS FILTER ---
-        // We use toUpperCase() for a case-insensitive check
-        const filteredData = data.filter(
-          (product) => product.category.toUpperCase() !== "ADDS ON"
-        );
-        // -----------------------
-
-        setProducts(filteredData); //
+        setProducts(data);
       } catch (err) {
         console.error("Failed to fetch products", err);
       }
@@ -101,152 +75,48 @@ export default function Userhome({ navigation }) {
     fetchProducts();
   }, []);
 
-  // --- 2. Load User Profile ---
-  useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const userString = await AsyncStorage.getItem("user");
-        if (userString) {
-          setProfile(JSON.parse(userString));
-        }
-      } catch (e) {
-        console.error("Failed to load user from storage:", e);
-      }
-    };
-    loadUser();
-  }, []);
-
-  // --- 3. Process Products for UI ---
-  // Memoized list of all products in a clean format
-  const processedProducts = useMemo(() => {
-    return products.map((p) => ({
-      id: p._id,
-      name: p.name,
-      category: p.category,
-      price: Number(p.priceS || p.priceM || p.priceL || p.priceB || 0),
-      rating: 4.5, // Using placeholder as in original code
-      img: { uri: p.image },
-      prices: {
-        regular: Number(p.priceS) || 0,
-        medium: Number(p.priceM) || 0,
-        large: Number(p.priceL) || 0,
-        buy1take1: Number(p.priceB) || 0,
-      },
-    }));
-  }, [products]);
-
-  // --- 4. Get All Unique Categories ---
-  // Memoized list of all unique category names for the filter panel
-  const allCategories = useMemo(() => {
-    const cats = new Set(products.map((p) => p.category));
-    return Array.from(cats);
-  }, [products]);
-
-  // --- 5. Main Logic: Filter, Search, Sort, and Group Products ---
+  // group products by category
   const productsByCategory = useMemo(() => {
-    let itemsToProcess = [...processedProducts];
-
-    // 1. Search
-    if (searchText) {
-      itemsToProcess = itemsToProcess.filter((p) =>
-        p.name.toLowerCase().includes(searchText.toLowerCase())
-      );
-    }
-
-    // 2. Filter
-    if (selectedCategories.length > 0) {
-      itemsToProcess = itemsToProcess.filter((p) =>
-        selectedCategories.includes(p.category)
-      );
-    }
-
-    // 3. Sort (from your existing SortPanel)
-    if (sortType === "star") {
-      itemsToProcess.sort((a, b) => b.rating - a.rating);
-    } else if (sortType === "trending") {
-      // Using price as a proxy for "trending"
-      itemsToProcess.sort((a, b) => b.price - a.price);
-    }
-
-    // 4. Group
     const grouped = {};
-    itemsToProcess.forEach((p) => {
+    products.forEach((p) => {
       if (!grouped[p.category]) grouped[p.category] = [];
-      grouped[p.category].push(p);
+      grouped[p.category].push({
+        id: p._id,
+        name: p.name,
+        price: Number(p.priceS || p.priceM || p.priceL || p.priceB || 0),
+        rating: 4.5,
+        img: { uri: `${API.baseURL.replace('/api', '')}${p.image}` },
+        prices: {
+          regular: Number(p.priceS) || 0,
+          medium: Number(p.priceM) || 0,
+          large: Number(p.priceL) || 0,
+          buy1take1: Number(p.priceB) || 0,
+        },
+      });
     });
     return grouped;
-  }, [processedProducts, searchText, selectedCategories, sortType]);
+  }, [products]);
 
-  // Callback function for UserProfile
+  const [activeCat, setActiveCat] = useState(null);
+  const [activeTab, setActiveTab] = useState("home");
+  const [showCategoryPanel, setShowCategoryPanel] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [sortPanelVisible, setSortPanelVisible] = useState(false);
+  const [sortType, setSortType] = useState(null);
+
+  const [scannerVisible, setScannerVisible] = useState(false);
+  const [scanned, setScanned] = useState(false);
+  const [BarCodeScannerComp, setBarCodeScannerComp] = useState(null);
+
+  const [profile, setProfile] = useState({
+    username: "John Doe",
+  });
+
   function handleProfileSave(updatedProfile) {
     if (!updatedProfile) return;
     setProfile((prev) => ({ ...prev, ...updatedProfile }));
   }
 
-  // --- 6. Helper for Filter Panel ---
-  const toggleCategory = (category) => {
-    setSelectedCategories((prev) =>
-      prev.includes(category)
-        ? prev.filter((c) => c !== category) // Remove it
-        : [...prev, category] // Add it
-    );
-  };
-
-  // --- RENDER: Filter Panel ---
-  const FilterPanel = () => (
-    <Modal
-      visible={filterPanelVisible}
-      transparent
-      animationType="fade"
-      onRequestClose={() => setFilterPanelVisible(false)}
-    >
-      <View style={styles.filterOverlay}>
-        <View style={styles.filterPanel}>
-          <View style={styles.filterHeader}>
-            <Text style={styles.filterTitle}>Filter by Category</Text>
-            <TouchableOpacity onPress={() => setFilterPanelVisible(false)}>
-              <X size={24} color={COLORS.sub} />
-            </TouchableOpacity>
-          </View>
-          <ScrollView>
-            {allCategories.map((category) => {
-              const isSelected = selectedCategories.includes(category);
-              return (
-                <TouchableOpacity
-                  key={category}
-                  style={styles.filterOption}
-                  onPress={() => toggleCategory(category)}
-                >
-                  {isSelected ? (
-                    <CheckSquare size={20} color={COLORS.accent} />
-                  ) : (
-                    <Square size={20} color={COLORS.sub} />
-                  )}
-                  <Text style={styles.filterOptionText}>{category}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-          <View style={styles.filterFooter}>
-            <TouchableOpacity
-              style={styles.filterClearButton}
-              onPress={() => setSelectedCategories([])}
-            >
-              <Text style={styles.filterClearText}>Clear All</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.filterApplyButton}
-              onPress={() => setFilterPanelVisible(false)}
-            >
-              <Text style={styles.filterApplyText}>Apply</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-
-  // --- RENDER: Sort Panel (Original) ---
   const SortPanel = () => (
     <Modal
       visible={sortPanelVisible}
@@ -294,25 +164,13 @@ export default function Userhome({ navigation }) {
     </Modal>
   );
 
-  // --- RENDER: Product List ---
+  // dynamic rendering of categories from DB
   function renderProductsByCategory() {
-    const categories = Object.keys(productsByCategory);
-    if (categories.length === 0) {
-      return (
-        <View style={styles.emptyResults}>
-          <Text style={styles.emptyResultsText}>No products found</Text>
-          <Text style={styles.emptyResultsSubText}>
-            Try adjusting your search or filter.
-          </Text>
-        </View>
-      );
-    }
-
-    return categories.map((cat) => (
+    return Object.entries(productsByCategory).map(([cat, items]) => (
       <View key={cat} style={{ marginTop: 12 }}>
         <Text style={styles.sectionTitle}>{cat}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {productsByCategory[cat].map((item) => (
+          {items.map((item) => (
             <TouchableOpacity
               key={item.id}
               style={styles.card}
@@ -343,45 +201,32 @@ export default function Userhome({ navigation }) {
     ));
   }
 
-  // --- RENDER: Header ---
-  const Header = () => {
-    const displayName =
-      profile?.nickname ||
-      (profile?.username && profile.username !== profile.email
-        ? profile.username
-        : null);
-
-    return (
-      <View style={styles.headerWrapper}>
-        {BlurViewComp ? (
-          <BlurViewComp intensity={70} tint="light" style={styles.headerBlur} />
-        ) : (
-          <View style={styles.headerFallback} />
-        )}
-        <View style={styles.headerContent}>
-          <View style={styles.logoWrap}>
-            <Image source={LogoImg} style={styles.logoImg} />
-            <Text style={styles.shopName}>Teacup</Text>
-          </View>
-          <View style={styles.userWrap}>
-            <Image
-              source={
-                profile?.image
-                  ? { uri: profile.image }
-                  : require("./assets/profile.png")
-              }
-              style={styles.userImg}
-            />
-            {displayName && (
-              <Text style={styles.userName} numberOfLines={1}>
-                {displayName}
-              </Text>
-            )}
-          </View>
+  const Header = () => (
+    <View style={styles.headerWrapper}>
+      {BlurViewComp ? (
+        <BlurViewComp intensity={70} tint="light" style={styles.headerBlur} />
+      ) : (
+        <View style={styles.headerFallback} />
+      )}
+      <View style={styles.headerContent}>
+        <View style={styles.logoWrap}>
+          <Image source={LogoImg} style={styles.logoImg} />
+          <Text style={styles.shopName}>Teacup</Text>
+        </View>
+        <View style={styles.userWrap}>
+          <Image
+            source={
+              profile?.image
+                ? { uri: profile.image }
+                : require("./assets/profile.png")
+            }
+            style={styles.userImg}
+          />
+          <Text style={styles.userName}>{profile?.username}</Text>
         </View>
       </View>
-    );
-  };
+    </View>
+  );
 
   async function openScanner() {
     Alert.alert(
@@ -392,21 +237,17 @@ export default function Userhome({ navigation }) {
     setScannerVisible(false);
   }
 
-  // --- RENDER: Main Component ---
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <StatusBar barStyle="dark-content" />
       <Header />
-      <SortPanel />
-      <FilterPanel />
-      {activeTab === "home" && (
+      {!showCategoryPanel && activeTab === "home" && (
         <ScrollView
           style={styles.container}
           contentContainerStyle={{
             paddingTop: HEADER_HEIGHT,
             paddingBottom: 120,
           }}
-          keyboardShouldPersistTaps="handled"
         >
           <View style={styles.searchBar}>
             <Search size={18} color={COLORS.sub} />
@@ -414,12 +255,8 @@ export default function Userhome({ navigation }) {
               placeholder="Search"
               placeholderTextColor={COLORS.sub}
               style={styles.searchInput}
-              value={searchText}
-              onChangeText={setSearchText} // Hooked up search
             />
-            <TouchableOpacity onPress={() => setFilterPanelVisible(true)}>
-              <SlidersHorizontal size={18} color={COLORS.sub} />
-            </TouchableOpacity>
+            <SlidersHorizontal size={18} color={COLORS.sub} />
           </View>
           <View style={styles.bannerWrap}>
             <ImageBackground
@@ -448,7 +285,9 @@ export default function Userhome({ navigation }) {
           {renderProductsByCategory()}
         </ScrollView>
       )}
-      {activeTab === "orders" && <AddToCharts navigation={navigation} />}
+      {!showCategoryPanel && activeTab === "orders" && (
+          <AddToCharts navigation={navigation} />
+        )}
       {activeTab === "notify" && <NotificationsPanel />}
       <View style={styles.tabBar}>
         <TabItem
@@ -495,7 +334,7 @@ export default function Userhome({ navigation }) {
           }
           onPress={() =>
             navigation.navigate("Profile", {
-              profile: profile || {},
+              profile,
               onSave: handleProfileSave,
             })
           }
@@ -508,7 +347,6 @@ export default function Userhome({ navigation }) {
   );
 }
 
-// --- RENDER: TabItem Component ---
 function TabItem({ active, label, icon, onPress }) {
   return (
     <TouchableOpacity
@@ -534,7 +372,6 @@ function TabItem({ active, label, icon, onPress }) {
   );
 }
 
-// --- Styles ---
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 14 },
   searchBar: {
@@ -641,11 +478,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: COLORS.border,
   },
-  tabItem: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 6,
-  },
+  tabItem: { alignItems: "center", justifyContent: "center", paddingHorizontal: 6 },
   tabIconWrap: {
     width: 40,
     height: 40,
@@ -663,12 +496,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
-  tabLabel: {
-    fontSize: 12,
-    color: COLORS.text,
-    marginTop: 2,
-    fontWeight: "700",
-  },
+  tabLabel: { fontSize: 12, color: COLORS.text, marginTop: 2, fontWeight: "700" },
   fab: {
     position: "absolute",
     left: "50%",
@@ -689,19 +517,9 @@ const styles = StyleSheet.create({
   logoWrap: { flexDirection: "row", alignItems: "center" },
   logoImg: { width: 36, height: 36, marginRight: 8, borderRadius: 8 },
   shopName: { fontSize: 20, fontWeight: "bold", color: COLORS.accent },
-  userWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1, // Add flex: 1 to allow shrinking
-    justifyContent: "flex-end", // Align to the right
-  },
+  userWrap: { flexDirection: "row", alignItems: "center" },
   userImg: { width: 40, height: 40, borderRadius: 20, marginRight: 8 },
-  userName: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: COLORS.text,
-    flexShrink: 1, // Allow text to shrink if needed
-  },
+  userName: { fontSize: 15, fontWeight: "600", color: COLORS.text },
   headerWrapper: {
     position: "absolute",
     top: 0,
@@ -721,120 +539,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     height: HEADER_HEIGHT,
-  },
-  // --- Sort Panel Styles ---
-  sortOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "flex-start",
-    alignItems: "flex-end",
-    paddingTop: HEADER_HEIGHT + 50,
-    paddingRight: 14,
-  },
-  sortPanel: {
-    backgroundColor: COLORS.card,
-    borderRadius: 8,
-    padding: 8,
-    elevation: 5,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-  },
-  sortBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
-  sortBtnText: {
-    fontSize: 15,
-    color: COLORS.text,
-  },
-  // --- Filter Panel Styles ---
-  filterOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
-  },
-  filterPanel: {
-    width: "100%",
-    maxHeight: "70%",
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
-    padding: 16,
-    elevation: 10,
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-  },
-  filterHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderBottomWidth: 1,
-    borderColor: COLORS.border,
-    paddingBottom: 12,
-    marginBottom: 12,
-  },
-  filterTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: COLORS.text,
-  },
-  filterOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-  },
-  filterOptionText: {
-    fontSize: 16,
-    color: COLORS.text,
-    marginLeft: 10,
-  },
-  filterFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    borderTopWidth: 1,
-    borderColor: COLORS.border,
-    paddingTop: 16,
-    marginTop: 8,
-  },
-  filterClearButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    backgroundColor: COLORS.bg,
-  },
-  filterClearText: {
-    color: COLORS.sub,
-    fontWeight: "bold",
-  },
-  filterApplyButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    backgroundColor: COLORS.accent,
-  },
-  filterApplyText: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
-  // --- Empty State ---
-  emptyResults: {
-    marginTop: 40,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
-  },
-  emptyResultsText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: COLORS.sub,
-  },
-  emptyResultsSubText: {
-    fontSize: 14,
-    color: COLORS.sub,
-    marginTop: 8,
-    textAlign: "center",
   },
 });

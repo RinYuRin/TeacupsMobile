@@ -8,8 +8,9 @@ import {
   ScrollView,
   Alert,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ionicons } from "@expo/vector-icons";
+import API from "./api";
 
 const ProductDetails = ({ navigation, route }) => {
   const { product } = route.params;
@@ -53,39 +54,77 @@ const ProductDetails = ({ navigation, route }) => {
     }
   };
 
-  // Use only the selected size price for total
-  const sizePrice = sizes.find((s) => s.label === selectedSize)?.price || product.price;
+  // Compute total price
+  const sizePrice =
+    sizes.find((s) => s.label === selectedSize)?.price || product.price;
   const addonsPrice = addons.reduce(
-    (sum, addon) => sum + (availableAddons.find((a) => a.label === addon)?.price || 0),
+    (sum, addon) =>
+      sum + (availableAddons.find((a) => a.label === addon)?.price || 0),
     0
   );
   const totalPrice = sizePrice + addonsPrice;
 
-  const handleAddToCart = async () => {
-    const cartProduct = {
-      ...product,
-      selectedSize,
-      addons,
-      totalPrice,
-    };
+const handleAddToCart = async () => {
+  try {
+    // ✅ Retrieve user from AsyncStorage
+    const storedUser = await AsyncStorage.getItem("user");
 
-    // Load existing cart
-    const storedCart = await AsyncStorage.getItem("cart");
-    const cart = storedCart ? JSON.parse(storedCart) : [];
+    if (!storedUser) {
+      Alert.alert(
+        "Login Required",
+        "Please log in before adding to cart."
+      );
+      return;
+    }
 
-    // Add new product
-    cart.push(cartProduct);
+    let user;
+    try {
+      user = JSON.parse(storedUser);
+    } catch (parseError) {
+      console.error("Error parsing stored user:", parseError);
+      Alert.alert("Error", "Invalid stored user data. Please log in again.");
+      return;
+    }
 
-    // Save updated cart
-    await AsyncStorage.setItem("cart", JSON.stringify(cart));
+    // ✅ Ensure user object has an _id
+    if (!user || !user._id) {
+      console.error("Invalid user data:", user);
+      Alert.alert("Error", "User ID not found. Please log in again.");
+      return;
+    }
 
-    // Show notification only, do NOT navigate
-    Alert.alert(
-      "Added to Cart",
-      `${product.name} has been added to your cart.`,
-      [{ text: "OK" }]
-    );
-  };
+    console.log("Sending Add to Cart for user:", user._id);
+
+    // ✅ Send the data to backend
+    const response = await fetch(`${API.baseURL}/cart/add`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: user._id,
+        email: user.email,
+        productId: product._id || product.id,
+        name: product.name,
+        image: product.image,
+        selectedSize,
+        addons,
+        totalPrice,
+        quantity: 1,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      Alert.alert("Added to Cart", `${product.name} added successfully.`);
+    } else {
+      console.error("Server error:", data);
+      Alert.alert("Error", data.message || "Failed to add to cart.");
+    }
+  } catch (error) {
+    console.error("Add to cart failed:", error);
+    Alert.alert("Error", "Unable to connect to server.");
+  }
+};
 
   return (
     <View style={styles.container}>
@@ -109,10 +148,9 @@ const ProductDetails = ({ navigation, route }) => {
         {/* Product Details */}
         <Text style={styles.productName}>{product.name}</Text>
         <Text style={styles.productDescription}>
-  {product.description ||
-    "Indulge in the perfect balance of rich, creamy milk and freshly brewed tea, blended to create a smooth and refreshing taste that lingers with every sip. Crafted with care, this drink is more than just milk tea — it’s a comforting escape in a cup, designed to brighten your day and satisfy your cravings."}
-</Text>
-
+          {product.description ||
+            "Indulge in the perfect balance of rich, creamy milk and freshly brewed tea, blended to create a smooth and refreshing taste that lingers with every sip. Crafted with care, this drink is more than just milk tea — it’s a comforting escape in a cup, designed to brighten your day and satisfy your cravings."}
+        </Text>
 
         {/* Size Selection */}
         {hasSizes && (

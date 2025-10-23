@@ -227,7 +227,6 @@ export default function SignUpScreen({ navigation }) {
 
   const [role, setRole] = useState("user");
 
-  // --- FIX 1: Corrected font paths ---
   const [fontsLoaded] = useFonts({
     "Poppins-Bold": require("./assets/font/Poppins/Poppins-Bold.ttf"),
     "Poppins-Regular": require("./assets/font/Poppins/Poppins-Regular.ttf"),
@@ -290,8 +289,8 @@ export default function SignUpScreen({ navigation }) {
     <View style={styles.fullScreenContainer} onLayout={onLayoutRootView}>
       <RNStatusBar barStyle="light-content" backgroundColor="#806153" />
       <View style={styles.headerBar} />
-      {/* --- MODIFICATION 1: Added scrollEnabled={false} --- */}
-      <ScrollView contentContainerStyle={styles.scrollViewContent} scrollEnabled={false}>
+      {/* Removed scrollEnabled={false} from the main ScrollView to make it scrollable */}
+      <ScrollView contentContainerStyle={styles.scrollViewContent}>
         <View style={styles.topIllustrationContainer}>
           <Image source={require("./assets/image/signup.png")} style={styles.topIllustration} />
           <View style={styles.topTextOverlay}>
@@ -369,7 +368,6 @@ export default function SignUpScreen({ navigation }) {
             <Image source={require("./assets/image/copass.png")} style={styles.inputSideIcon} />
           </View>
 
-          {/* --- FIX 2: Corrected View nesting --- */}
           {/* Terms and Conditions Checkbox */}
           <View style={styles.termsContainer}>
             <Checkbox
@@ -388,7 +386,6 @@ export default function SignUpScreen({ navigation }) {
                 <Text style={styles.termsLink}>Conditions</Text>
               </TouchableOpacity>
             </Text>
-          </View>
           
           {/* Policy and Agreement Checkbox */}
           <View style={styles.termsContainer}>
@@ -409,10 +406,9 @@ export default function SignUpScreen({ navigation }) {
               </TouchableOpacity>
             </Text>
           </View>
-          {/* --- End of FIX 2 --- */}
-
-          {/* --- MODIFICATION 2: Commented out Admin Switch --- */}
-          {/* <View style={styles.termsContainer}>
+          </View>
+          {/* 3. Add UI for Role Selection (Switch) */}
+          <View style={styles.termsContainer}>
             <Text style={[styles.termsText, { flex: 1, fontSize: 14 }]}>
               Sign up as Admin:
             </Text>
@@ -425,7 +421,6 @@ export default function SignUpScreen({ navigation }) {
               style={{ marginLeft: 10 }}
             />
           </View>
-          */}
           <TouchableOpacity style={styles.loginButton} onPress={handleSignUp}>
             <Text style={styles.loginButtonText}>SIGN UP</Text>
           </TouchableOpacity>

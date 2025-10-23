@@ -15,6 +15,6 @@ const userSchema = new mongoose.Schema({
   image: { type: String },
   resetPasswordOtp: { type: String },
   resetPasswordExpires: { type: Date },
-});
+}, { timestamps: true });
 
 export default mongoose.model("User", userSchema, "users");

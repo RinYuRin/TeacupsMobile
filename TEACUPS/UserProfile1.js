@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   View,
   Text,
@@ -15,33 +15,63 @@ import {
   useWindowDimensions,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import API from "./api";
 
 export default function UserProfile({ navigation, route }) {
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] =useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  // include address, remove gcash
+  
+  // State for user ID
+  const [userId, setUserId] = useState(null);
+
+  // Profile data
   const [editProfile, setEditProfile] = useState({
     username: "",
     nickname: "",
     email: "",
     phone: "",
     address: "",
-    image: null,
   });
-  // change password fields
+  const [profileImage, setProfileImage] = useState(null); // This holds the URI for display
+
+  // Change password fields
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [profileImage, setProfileImage] = useState(null);
 
   const colorScheme = useColorScheme();
   const { width, height } = useWindowDimensions();
-  const isLandscape = width > height;
-  const isLarge = width >= 700;
-
-  // responsive styles memoized
   const styles = useMemo(() => createStyles(width, colorScheme), [width, colorScheme]);
 
+  // --- 1. Load User Data on Mount ---
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      try {
+        const userString = await AsyncStorage.getItem("user");
+        if (userString) {
+          const user = JSON.parse(userString);
+          setUserId(user._id);
+          setEditProfile({
+            username: user.username || "",
+            nickname: user.nickname || "",
+            email: user.email || "",
+            phone: user.phone || "",
+            address: user.address || "",
+          });
+          if (user.image) {
+            setProfileImage(user.image); // Set current profile image from DB
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load user profile:", e);
+        Alert.alert("Error", "Could not load your profile.");
+      }
+    };
+    loadUserProfile();
+  }, []);
+
+  // --- 2. Image Picker ---
   const pickImage = async () => {
     try {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -50,26 +80,143 @@ export default function UserProfile({ navigation, route }) {
         return;
       }
 
-      // Temporary: open gallery directly for simplicity. Replace with your own UI to choose Camera/Gallery.
       const result = await ImagePicker.launchImageLibraryAsync({
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
       });
 
-      console.log("ImagePicker result:", result);
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const uri = result.assets[0].uri;
-        if (uri) {
-          setProfileImage(uri);
-          setEditProfile((prev) => ({ ...prev, image: uri }));
-        }
+        setProfileImage(uri); // Set new image for display
+        // We won't update editProfile.image here, we'll handle the URI in handleUpdateProfile
       }
     } catch (err) {
       console.error("pickImage error:", err);
       Alert.alert("Error", "Could not pick image.");
     }
   };
+
+  // --- 3. Handle Profile Update (Save Button) ---
+  const handleUpdateProfile = async () => {
+    if (!userId) return;
+
+    try {
+      // Create FormData to send text and image
+      const formData = new FormData();
+      formData.append("userId", userId);
+      formData.append("username", editProfile.username);
+      formData.append("nickname", editProfile.nickname);
+      formData.append("email", editProfile.email);
+      formData.append("phone", editProfile.phone);
+      formData.append("address", editProfile.address);
+
+      // Check if the profileImage is a *new* local image (i.e., not an http url)
+      if (profileImage && !profileImage.startsWith("http")) {
+        
+        if (Platform.OS === 'web') {
+          // --- WEB UPLOAD ---
+          // 1. Convert the local URI (blob: or data:) to a Blob
+          const response = await fetch(profileImage);
+          const blob = await response.blob();
+          
+          // 2. Get the file type from the Blob
+          const fileType = blob.type.split('/')[1] || 'jpg';
+          const fileName = `profile.${fileType}`;
+
+          // 3. Append the Blob as a file
+          formData.append("image", blob, fileName);
+
+        } else {
+          // --- NATIVE UPLOAD (Your original code) ---
+          const fileType = profileImage.split(".").pop().split("?")[0];
+          let mimeType = `image/${fileType === 'jpg' ? 'jpeg' : fileType}`;
+          
+          formData.append("image", {
+            uri: profileImage,
+            name: `profile.${fileType}`,
+            type: mimeType,
+          });
+        }
+      }
+      // Send to the backend
+      const response = await fetch(`${API.baseURL}/user/update-profile`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Update local storage with new user data
+        await AsyncStorage.setItem("user", JSON.stringify(data.user));
+
+        // Call the onSave prop to update Userhome.js
+        const cb = route?.params?.onSave;
+        if (typeof cb === "function") {
+          cb(data.user);
+        }
+
+        Alert.alert("Success", data.message);
+        setEditing(false);
+      } else {
+        Alert.alert("Error", data.message || "Failed to update profile.");
+      }
+    } catch (e) {
+      console.error("handleUpdateProfile error:", e);
+      Alert.alert("Error", "An error occurred while updating.");
+    }
+  };
+
+  // --- 4. Handle Password Change (Save Button) ---
+  const handlePasswordChange = async () => {
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      Alert.alert("Error", "Please fill all password fields.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      Alert.alert("Error", "New password and confirmation do not match.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API.baseURL}/user/change-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: userId,
+          oldPassword: oldPassword,
+          newPassword: newPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        Alert.alert("Success", data.message);
+        setOldPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+        setShowPassword(false);
+      } else {
+        Alert.alert("Error", data.message || "Password change failed.");
+      }
+    } catch (e) {
+      console.error("handlePasswordChange error:", e);
+      Alert.alert("Error", "Could not connect to server.");
+    }
+  };
+
+  // --- 5. Logout Function ---
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.removeItem("user");
+      navigation.reset({ index: 0, routes: [{ name: "Login" }] });
+    } catch (e) {
+      console.error("Logout error:", e);
+    }
+  };
+
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -96,17 +243,18 @@ export default function UserProfile({ navigation, route }) {
               {editing && <Text style={styles.uploadText}>Tap to change photo</Text>}
             </TouchableOpacity>
 
+            {/* Display data from state */}
             <View style={styles.headerRight}>
-              <Text style={styles.nameText}>{editProfile?.username || "Your Name"}</Text>
-              <Text style={styles.emailText}>{editProfile?.email || "your@email.com"}</Text>
-              {/* show address in header */}
-              {editProfile?.address ? <Text style={styles.emailText}>{editProfile.address}</Text> : null}
+              <Text style={styles.nameText}>{editProfile.username || "Your Name"}</Text>
+              <Text style={styles.emailText}>{editProfile.email || "your@email.com"}</Text>
+              {editProfile.address ? <Text style={styles.emailText}>{editProfile.address}</Text> : null}
             </View>
           </View>
 
           {/* General Settings */}
           {!editing && !showPassword && (
             <>
+              {/* ... (Other options: Edit Profile, Change Password, etc.) ... */}
               <Text style={styles.sectionTitle}>General</Text>
               <TouchableOpacity style={styles.option} onPress={() => setEditing(true)}>
                 <Text style={styles.optionText}>Edit Profile</Text>
@@ -118,11 +266,7 @@ export default function UserProfile({ navigation, route }) {
               </TouchableOpacity>
               <TouchableOpacity style={styles.option}>
                 <Text style={styles.optionText}>Terms of Use</Text>
-                <Text style={styles.subText}>Protect your account now</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.option}>
-                <Text style={styles.optionText}>Bind GCash</Text>
-                <Text style={styles.subText}>Securely bind GCash for payment</Text>
+                <Text style={styles.subText}>Read our terms and conditions</Text>
               </TouchableOpacity>
               <View style={styles.rowBetween}>
                 <TouchableOpacity style={styles.button} onPress={() => navigation.goBack()}>
@@ -130,7 +274,7 @@ export default function UserProfile({ navigation, route }) {
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.button, styles.logoutButton]}
-                  onPress={() => navigation.reset({ index: 0, routes: [{ name: "Login" }] })}
+                  onPress={handleLogout} // Use new logout function
                 >
                   <Text style={[styles.buttonText, styles.logoutText]}>Logout</Text>
                 </TouchableOpacity>
@@ -138,11 +282,10 @@ export default function UserProfile({ navigation, route }) {
             </>
           )}
 
-          {/* Edit Profile (responsive: two-column on wide screens) */}
+          {/* Edit Profile Form */}
           {editing && (
             <>
               <Text style={styles.sectionTitle}>Edit Profile</Text>
-
               <View style={styles.formRow}>
                 <TextInput
                   style={[styles.input, styles.halfInput]}
@@ -159,7 +302,7 @@ export default function UserProfile({ navigation, route }) {
                   onChangeText={(t) => setEditProfile({ ...editProfile, nickname: t })}
                 />
               </View>
-
+              {/* ... (Email, Phone, Address inputs) ... */}
               <View style={styles.formRow}>
                 <TextInput
                   style={[styles.input, styles.halfInput]}
@@ -178,7 +321,6 @@ export default function UserProfile({ navigation, route }) {
                   keyboardType="phone-pad"
                 />
               </View>
-
               <TextInput
                 style={styles.input}
                 placeholder="Address"
@@ -190,16 +332,7 @@ export default function UserProfile({ navigation, route }) {
               <View style={styles.rowBetween}>
                 <TouchableOpacity
                   style={styles.button}
-                  onPress={() => {
-                    // push updates back to parent if callback provided
-                    try {
-                      const cb = route?.params?.onSave;
-                      if (typeof cb === "function") cb(editProfile);
-                    } catch (e) {
-                      console.error("onSave callback error:", e);
-                    }
-                    setEditing(false);
-                  }}
+                  onPress={handleUpdateProfile} // Use new update function
                 >
                   <Text style={styles.buttonText}>Save</Text>
                 </TouchableOpacity>
@@ -210,7 +343,7 @@ export default function UserProfile({ navigation, route }) {
             </>
           )}
 
-          {/* Change Password */}
+          {/* Change Password Form */}
           {showPassword && (
             <>
               <Text style={styles.sectionTitle}>Change Password</Text>
@@ -241,23 +374,7 @@ export default function UserProfile({ navigation, route }) {
               <View style={styles.rowBetween}>
                 <TouchableOpacity
                   style={styles.button}
-                  onPress={() => {
-                    // Basic validation
-                    if (!oldPassword || !newPassword || !confirmPassword) {
-                      Alert.alert("Error", "Please fill all password fields.");
-                      return;
-                    }
-                    if (newPassword !== confirmPassword) {
-                      Alert.alert("Error", "New password and confirmation do not match.");
-                      return;
-                    }
-                    // TODO: verify oldPassword against stored password / API
-                    Alert.alert("Success", "Password updated.");
-                    setOldPassword("");
-                    setNewPassword("");
-                    setConfirmPassword("");
-                    setShowPassword(false);
-                  }}
+                  onPress={handlePasswordChange} // Use new password change function
                 >
                   <Text style={styles.buttonText}>Save</Text>
                 </TouchableOpacity>
@@ -273,7 +390,7 @@ export default function UserProfile({ navigation, route }) {
   );
 }
 
-// responsive style factory
+// ... (createStyles function remains unchanged)
 function createStyles(width, colorScheme) {
   const isLarge = width >= 700;
   const bg = colorScheme === "dark" ? "#0B0B0B" : "#fff";

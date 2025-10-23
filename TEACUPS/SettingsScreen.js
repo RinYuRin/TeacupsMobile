@@ -39,14 +39,6 @@ export default function SettingsScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* Bind */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Bind</Text>
-        <TouchableOpacity style={styles.option} onPress={() => navigation.navigate("BindGcash")}>
-          <Text style={styles.optionText}>Bind GCash</Text>
-        </TouchableOpacity>
-      </View>
-
       {/* Logout */}
       <TouchableOpacity
         style={[styles.option, { backgroundColor: "#C4956C" }]}

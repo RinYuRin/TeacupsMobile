@@ -52,6 +52,28 @@ router.post("/forgot-password", async (req, res) => {
   }
 });
 
+// Verify OTP
+router.post("/verify-otp", async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    const user = await User.findOne({
+      email,
+      resetPasswordOtp: otp,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid OTP or OTP has expired." });
+    }
+
+    // OTP is valid
+    res.json({ message: "OTP verified successfully." });
+  } catch (err) {
+    console.error("Verify OTP error:", err);
+    res.status(500).json({ message: "Server error." });
+  }
+});
+
 // Reset Password - Verify OTP and set new password
 router.post("/reset-password", async (req, res) => {
   try {
@@ -222,5 +244,17 @@ router.post(
   }
 );
 
+// GET all users (for dashboard analytics)
+router.get("/users", async (req, res) => {
+  try {
+    // Find all users but only select the 'createdAt' and 'role' fields
+    // This is more secure as it avoids sending passwords or personal info
+    const users = await User.find({}, 'createdAt role');
+    res.json(users);
+  } catch (err) {
+    console.error("Error fetching users:", err);
+    res.status(500).json({ message: "Server error fetching users." });
+  }
+});
 
 export default router;
