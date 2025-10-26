@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react"; // ✅ useEffect added
 import {
   View,
   Text,
@@ -20,7 +20,7 @@ import API from "./api";
 
 SplashScreen.preventAutoHideAsync();
 
-export default function LoginScreen({ navigation }) {
+export default function LoginScreen({ navigation, route }) { // ✅ route added
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -37,6 +37,19 @@ export default function LoginScreen({ navigation }) {
       await SplashScreen.hideAsync();
     }
   }, [fontsLoaded]);
+
+  // ✅ THIS HOOK CATCHES THE LOGOUT SIGNAL
+  useEffect(() => {
+    if (route.params?.loggedOut) {
+      showToast(
+        "success",
+        "Logged Out",
+        "You have successfully logged out."
+      );
+      // Clear the param so it doesn't show again on navigation
+      navigation.setParams({ loggedOut: undefined });
+    }
+  }, [route.params?.loggedOut]); // Runs when this param changes
 
   const showToast = (type, title, message) => {
     Toast.show({
@@ -161,8 +174,8 @@ export default function LoginScreen({ navigation }) {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Toast UI */}
-      <Toast />
+      {/* ✅ Toast UI REMOVED FROM HERE */}
+      {/* <Toast /> */}
     </View>
   );
 }
@@ -335,4 +348,3 @@ const styles = StyleSheet.create({
     zIndex: 0,
   },
 });
-

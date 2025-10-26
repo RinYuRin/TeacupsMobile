@@ -2282,3 +2282,14 @@
 2025-10-26T16:00:42.241Z | GET /api/orders/all | 304 | 189.288 ms
 2025-10-26T16:00:48.721Z | GET /api/orders/reports/sales-by-month | 304 | 196.831 ms
 2025-10-26T16:00:48.855Z | GET /api/orders/reports/sales-by-category | 304 | 129.359 ms
+2025-10-26T16:24:49.213Z | OPTIONS /api/login | 204 | 0.975 ms
+2025-10-26T16:24:49.523Z | POST /api/login | 200 | 307.503 ms
+2025-10-26T16:24:52.346Z | GET /api/users | 304 | 1280.706 ms
+2025-10-26T16:24:52.357Z | GET /api/orders/all | 304 | 1281.551 ms
+2025-10-26T16:24:52.401Z | GET /api/product/fetch | 304 | 1323.012 ms
+2025-10-26T16:25:09.171Z | OPTIONS /api/login | 204 | 0.211 ms
+2025-10-26T16:25:09.383Z | POST /api/login | 200 | 210.568 ms
+2025-10-26T16:25:11.037Z | GET /api/product/fetch | 304 | 123.882 ms
+2025-10-26T16:25:17.978Z | GET /api/cart/68f7ed7c0eddbb7d8061823b | 304 | 189.569 ms
+2025-10-26T16:25:19.705Z | GET /api/orders/68f7ed7c0eddbb7d8061823b | 200 | 143.403 ms
+2025-10-26T16:25:29.797Z | GET /api/orders/68f7ed7c0eddbb7d8061823b | 304 | 229.842 ms

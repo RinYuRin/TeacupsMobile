@@ -7,10 +7,10 @@ import {
   StyleSheet,
   Image,
   ScrollView,
-  Alert, // Keeping Alert for now, but will replace usage with Toast.show
+  Alert, // ✅ Alert is now used for confirmation
   SafeAreaView,
   KeyboardAvoidingView,
-  Platform,
+  Platform, // ✅ Platform is used for the fix
   useColorScheme,
   useWindowDimensions,
   Modal,
@@ -213,16 +213,21 @@ export default function UserProfile({ navigation, route }) {
           cb(data.user);
         }
 
-        // Toast with topOffset
+        // ✅ YOUR TOAST IS ALREADY HERE
         Toast.show({
           type: "success",
           text1: "Success",
           text2: data.message,
           topOffset: TOAST_OFFSET,
         });
-        setEditing(false);
+
+        // ✅ IMPROVEMENT: Delay closing the form so you can see the toast
+        setTimeout(() => {
+          setEditing(false);
+        }, 500); 
+
       } else {
-        // Toast with topOffset
+        // ✅ YOUR TOAST IS ALREADY HERE
         Toast.show({
           type: "error",
           text1: "Error",
@@ -232,7 +237,7 @@ export default function UserProfile({ navigation, route }) {
       }
     } catch (e) {
       console.error("handleUpdateProfile error:", e);
-      // Toast with topOffset
+      // ✅ YOUR TOAST IS ALREADY HERE
       Toast.show({
         type: "error",
         text1: "Error",
@@ -245,7 +250,7 @@ export default function UserProfile({ navigation, route }) {
   // --- 4. Handle Password Change (Save Button) ---
   const handlePasswordChange = async () => {
     if (!oldPassword || !newPassword || !confirmPassword) {
-      // Toast with topOffset
+      // ✅ YOUR TOAST IS ALREADY HERE
       Toast.show({
         type: "error",
         text1: "Error",
@@ -255,7 +260,7 @@ export default function UserProfile({ navigation, route }) {
       return;
     }
     if (newPassword !== confirmPassword) {
-      // Toast with topOffset
+      // ✅ YOUR TOAST IS ALREADY HERE
       Toast.show({
         type: "error",
         text1: "Error",
@@ -279,7 +284,7 @@ export default function UserProfile({ navigation, route }) {
       const data = await response.json();
 
       if (response.ok) {
-        // Toast with topOffset
+        // ✅ YOUR TOAST IS ALREADY HERE
         Toast.show({
           type: "success",
           text1: "Success",
@@ -289,9 +294,14 @@ export default function UserProfile({ navigation, route }) {
         setOldPassword("");
         setNewPassword("");
         setConfirmPassword("");
-        setShowPassword(false);
+        
+        // ✅ IMPROVEMENT: Delay closing the form so you can see the toast
+        setTimeout(() => {
+          setShowPassword(false);
+        }, 500);
+
       } else {
-        // Toast with topOffset
+        // ✅ YOUR TOAST IS ALREADY HERE
         Toast.show({
           type: "error",
           text1: "Error",
@@ -301,7 +311,7 @@ export default function UserProfile({ navigation, route }) {
       }
     } catch (e) {
       console.error("handlePasswordChange error:", e);
-      // Toast with topOffset
+      // ✅ YOUR TOAST IS ALREADY HERE
       Toast.show({
         type: "error",
         text1: "Error",
@@ -311,21 +321,21 @@ export default function UserProfile({ navigation, route }) {
     }
   };
 
-  // --- 5. Logout Function ---
+  // --- 5. Logout Function (This now contains the logic) ---
   const handleLogout = async () => {
     try {
       await AsyncStorage.removeItem("user");
-      // Add success toast on logout with topOffset
-      Toast.show({
-        type: "success",
-        text1: "Logged Out",
-        text2: "You have successfully logged out.",
-        topOffset: TOAST_OFFSET,
+      
+      navigation.reset({
+        index: 0,
+        routes: [
+          { 
+            name: "Login",
+            // Pass the signal to the Login screen
+            params: { loggedOut: true } 
+          }
+        ],
       });
-      // Delay navigation to ensure the toast has time to render
-      setTimeout(() => {
-        navigation.reset({ index: 0, routes: [{ name: "Login" }] });
-      }, 500);
       
     } catch (e) {
       console.error("Logout error:", e);
@@ -338,6 +348,36 @@ export default function UserProfile({ navigation, route }) {
       });
     }
   };
+
+  // ✅ --- MODIFIED: Logout Confirmation (Web & Native) ---
+  const confirmLogout = () => {
+    if (Platform.OS === 'web') {
+      // Use web's native confirm dialog
+      if (window.confirm("Are you sure you want to log out?")) {
+        // User clicked "OK"
+        handleLogout();
+      }
+      // If they click "Cancel", nothing happens.
+    } else {
+      // Use React Native's native Alert for iOS/Android
+      Alert.alert(
+        "Confirm Logout", // Title
+        "Are you sure you want to log out?", // Message
+        [
+          {
+            text: "No",
+            onPress: () => {}, // Does nothing
+            style: "cancel",
+          },
+          {
+            text: "Yes",
+            onPress: handleLogout, // Calls the original logout function
+          },
+        ]
+      );
+    }
+  };
+
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -424,7 +464,7 @@ export default function UserProfile({ navigation, route }) {
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.button, styles.logoutButton]}
-                  onPress={handleLogout} // Use new logout function
+                  onPress={confirmLogout} // ✅ This now works on web and native
                 >
                   <Text style={[styles.buttonText, styles.logoutText]}>
                     Logout
