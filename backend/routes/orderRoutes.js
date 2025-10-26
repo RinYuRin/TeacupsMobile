@@ -9,11 +9,16 @@ const router = express.Router();
 // Create a new order from SELECTED cart items
 router.post("/create", async (req, res) => {
   try {
-    // 1. Get userId AND the array of selected cartItemIds from the body
-    const { userId, cartItemIds } = req.body;
+    // 1. ✅ CHANGED: Get username from the body
+    const { userId, username, cartItemIds } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json({ message: "Invalid user ID." });
+    }
+    
+    // ✅ ADDED: Simple validation for username
+    if (!username) {
+      return res.status(400).json({ message: "Username is required." });
     }
 
     // 2. Validate that cartItemIds is an array
@@ -41,6 +46,7 @@ router.post("/create", async (req, res) => {
 
     const newOrder = new Order({
       userId,
+      username, // ✅ ADDED: Save the username
       items: cartItems.map((item) => ({
         productId: item.productId,
         name: item.name,
@@ -71,6 +77,7 @@ router.post("/create", async (req, res) => {
 
 // GET all orders (for admin dashboard)
 router.get("/all", async (req, res) => {
+  // ... (This route remains unchanged)
   try {
     // Find all orders, and select status, createdAt, grandTotal, AND items
     const orders = await Order.find({}, 'status createdAt grandTotal items');
@@ -86,7 +93,8 @@ router.get("/reports/sales-by-month", async (req, res) => {
   try {
     const salesByMonth = await Order.aggregate([
       {
-        $match: { status: "Completed" }, // Only 'Completed' orders
+        // ✅ CHANGED: Filter by "Paid" status
+        $match: { status: "paid" }, 
       },
       {
         $group: {
@@ -123,7 +131,8 @@ router.get("/reports/sales-by-category", async (req, res) => {
   try {
     const salesByCategory = await Order.aggregate([
       {
-        $match: { status: "Completed" }, // Only 'Completed' orders
+        // ✅ CHANGED: Filter by "Paid" status
+        $match: { status: "paid" }, 
       },
       {
         $unwind: "$items", // Deconstruct the items array
@@ -169,6 +178,7 @@ router.get("/reports/sales-by-category", async (req, res) => {
 // Fetch all orders for a specific user (no change)
 // THIS MUST BE AFTER THE '/reports/...' routes
 router.get("/:userId", async (req, res) => {
+  // ... (This route remains unchanged)
   try {
     const { userId } = req.params;
     if (!mongoose.Types.ObjectId.isValid(userId)) {

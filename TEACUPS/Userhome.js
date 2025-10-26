@@ -12,7 +12,6 @@ import {
   Dimensions,
   SafeAreaView,
   Modal,
-  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import {
@@ -23,7 +22,6 @@ import {
   Home,
   Bell,
   User,
-  Scan,
   CheckSquare,
   Square,
   X,
@@ -74,11 +72,6 @@ export default function Userhome({ navigation }) {
   const [filterPanelVisible, setFilterPanelVisible] = useState(false);
   const [sortType, setSortType] = useState(null); // 'star', 'trending'
   const [selectedCategories, setSelectedCategories] = useState([]); // Array of category names
-
-  // --- Scanner States ---
-  const [scannerVisible, setScannerVisible] = useState(false);
-  const [scanned, setScanned] = useState(false);
-  const [BarCodeScannerComp, setBarCodeScannerComp] = useState(null);
 
   // --- 1. Fetch Products from Backend ---
   useEffect(() => {
@@ -383,15 +376,6 @@ export default function Userhome({ navigation }) {
     );
   };
 
-  async function openScanner() {
-    Alert.alert(
-      "Scanner unavailable",
-      "QR scanner is not active in this build.",
-      [{ text: "OK" }]
-    );
-    setScannerVisible(false);
-  }
-
   // --- RENDER: Main Component ---
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
@@ -500,9 +484,6 @@ export default function Userhome({ navigation }) {
             })
           }
         />
-        <TouchableOpacity style={styles.fab} onPress={() => openScanner()}>
-          <Scan size={20} color="#fff" />
-        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -668,23 +649,6 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginTop: 2,
     fontWeight: "700",
-  },
-  fab: {
-    position: "absolute",
-    left: "50%",
-    marginLeft: -26,
-    bottom: 62,
-    width: 60,
-    height: 60,
-    borderRadius: 26,
-    backgroundColor: COLORS.accent,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 5,
-    zIndex: 10,
   },
   logoWrap: { flexDirection: "row", alignItems: "center" },
   logoImg: { width: 36, height: 36, marginRight: 8, borderRadius: 8 },

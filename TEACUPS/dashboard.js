@@ -275,8 +275,16 @@ export default function Dashboard({ navigation }) {
 
   // Helper for formatting numbers (reused for all stats)
   const formatStat = (num) => {
-    const numStr = Math.round(num).toString().padStart(6, '0');
-    return numStr.slice(0, 3) + "," + numStr.slice(3);
+    // This removes the '000,000' padding and uses standard comma formatting
+    return Math.round(num).toLocaleString();
+  };
+
+  // ✅ NEW: Helper function for formatting sold counts (e.g., 5.2k)
+  const formatSoldCount = (num) => {
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1) + 'k';
+    }
+    return num.toString();
   };
 
   // --- All memoized calculations ---
@@ -320,7 +328,7 @@ export default function Dashboard({ navigation }) {
 
     let todayCount = 0, weekCount = 0, monthCount = 0, yearCount = 0;
     for (const order of allOrders) {
-      if (order.status === 'Completed') {
+      if (order.status === 'paid') {
         const createdAt = new Date(order.createdAt);
         if (createdAt >= startOfYear) { yearCount++;
           if (createdAt >= startOfMonth) { monthCount++;
@@ -348,7 +356,7 @@ export default function Dashboard({ navigation }) {
 
     let todaySales = 0, weekSales = 0, monthSales = 0, yearSales = 0;
     for (const order of allOrders) {
-      if (order.status === 'Completed') {
+      if (order.status === 'paid') {
         const createdAt = new Date(order.createdAt);
         const saleAmount = order.grandTotal || 0;
         if (createdAt >= startOfYear) { yearSales += saleAmount;
@@ -365,6 +373,74 @@ export default function Dashboard({ navigation }) {
       Month: formatStat(monthSales), Yearly: formatStat(yearSales),
     };
   }, [allOrders]);
+
+  // ✅ NEW: Memoized calculation for the single trending product
+  const trendingProduct = useMemo(() => {
+    const productSalesData = new Map();
+
+    // 1. Iterate through all 'paid' orders to aggregate product data
+    for (const order of allOrders) {
+      if (order.status !== 'paid') continue; // Only count paid orders
+
+      const orderDate = new Date(order.createdAt);
+
+      for (const item of order.items) {
+        const productName = item.name;
+        const itemQuantity = item.quantity || 1;
+
+        const data = productSalesData.get(productName);
+
+        if (!data) {
+          // This is the first time we see this product
+          productSalesData.set(productName, {
+            name: productName,
+            totalSold: itemQuantity,
+            firstSoldDate: orderDate, // This is its first sale date
+          });
+        } else {
+          // Update existing product data
+          data.totalSold += itemQuantity;
+          // Check if this order is earlier than the stored firstSoldDate
+          if (orderDate < data.firstSoldDate) {
+            data.firstSoldDate = orderDate;
+          }
+          productSalesData.set(productName, data);
+        }
+      }
+    }
+
+    // 2. Find the best product from the aggregated map
+    const allProductStats = Array.from(productSalesData.values());
+
+    if (allProductStats.length === 0) {
+      // Default placeholder if there are no sales
+      return { name: "No Sales Yet", sold: 0, rating: 0 };
+    }
+
+    // 3. Use reduce to find the winner based on tie-breaker logic
+    const bestProduct = allProductStats.reduce((best, current) => {
+      // Primary Sort: Higher totalSold wins
+      if (current.totalSold > best.totalSold) {
+        return current;
+      }
+      
+      // Secondary Sort (Tie-breaker): Earlier firstSoldDate wins
+      if (current.totalSold === best.totalSold && current.firstSoldDate < best.firstSoldDate) {
+        return current;
+      }
+
+      // Otherwise, keep the current best
+      return best;
+    }, allProductStats[0]); // Start comparison with the first item
+
+    // 4. Return the data needed for the UI
+    return {
+      name: bestProduct.name,
+      sold: bestProduct.totalSold,
+      rating: 4.9, // Keeping rating static as requested
+    };
+
+  }, [allOrders]); // Dependency: only recalculate when orders change
 
   // Memoized list of all categories
   const allCategories = useMemo(() => {
@@ -398,9 +474,9 @@ export default function Dashboard({ navigation }) {
     const productCounts = new Map();
     const upperChartCategory = chartCategory.toUpperCase();
 
-    // 1. Count products from completed orders
+    // 1. Count products from 'paid' orders
     for (const order of allOrders) {
-      if (order.status === 'Completed') {
+      if (order.status === 'paid') {
         for (const item of order.items) {
           // Find the item's category
           const itemCategory = productToCategoryMap.get(item.name);
@@ -443,7 +519,7 @@ export default function Dashboard({ navigation }) {
   const productSoldCount = useMemo(() => {
     const soldCountsMap = new Map();
     for (const order of allOrders) {
-      if (order.status === 'Completed') {
+      if (order.status === 'paid') {
         for (const item of order.items) {
           const currentCount = soldCountsMap.get(item.name) || 0;
           soldCountsMap.set(item.name, currentCount + (item.quantity || 1)); // Use quantity
@@ -464,7 +540,7 @@ export default function Dashboard({ navigation }) {
     const startOfYear = new Date(now.getFullYear(), 0, 1);
 
     for (const order of allOrders) {
-      if (order.status === 'Completed') {
+      if (order.status === 'paid') {
         const createdAt = new Date(order.createdAt);
 
         for (const item of order.items) {
@@ -582,6 +658,7 @@ export default function Dashboard({ navigation }) {
                 <Text style={{ fontSize: 22, fontWeight: "bold", fontFamily: "Poppins-Bold" }}>Hi, Miss Rhea</Text>
                 <Text style={{ fontSize: 14, color: "gray", fontFamily: "Poppins-Regular" }}>Administrator</Text>
               </View>
+              {/* ✅ REMOVED: Icon View
               <View style={{ flexDirection: "row", gap: 12 }}>
                 <TouchableOpacity>
                   <MessageCircle size={22} color="gray" />
@@ -590,6 +667,7 @@ export default function Dashboard({ navigation }) {
                   <Bell size={22} color="gray" />
                 </TouchableOpacity>
               </View>
+              */}
             </View>
 
             {/* Tabs + Date */}
@@ -698,7 +776,7 @@ export default function Dashboard({ navigation }) {
               </View>
             </View>
 
-            {/* Trending Product (Still hardcoded) */}
+            {/* ✅ MODIFIED: Dynamic Trending Product */}
             <View style={{
               backgroundColor: "#fff",
               borderRadius: 12,
@@ -711,14 +789,27 @@ export default function Dashboard({ navigation }) {
                 }}
                 style={{ width: "100%", height: 150 }}
               />
-              <View style={{ position: "absolute", bottom: 12, left: 12 }}>
+              {/* Added a background overlay for text readability */}
+              <View style={{ 
+                position: "absolute", 
+                bottom: 12, 
+                left: 12, 
+                backgroundColor: 'rgba(0,0,0,0.3)', 
+                paddingVertical: 4,
+                paddingHorizontal: 8,
+                borderRadius: 5 
+              }}>
                 <Text style={{ fontSize: 16, fontWeight: "bold", color: "white" }}>
-                  Dark Chocolate
+                  {trendingProduct.name}
                 </Text>
                 <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
-                  <Text style={{ color: "white", marginRight: 8 }}>5.2k Sold</Text>
+                  <Text style={{ color: "white", marginRight: 8 }}>
+                    {formatSoldCount(trendingProduct.sold)} Sold
+                  </Text>
                   <Star size={14} color="yellow" fill="yellow" />
-                  <Text style={{ color: "white", marginLeft: 4 }}>4.9</Text>
+                  <Text style={{ color: "white", marginLeft: 4 }}>
+                    {trendingProduct.rating}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -766,7 +857,7 @@ export default function Dashboard({ navigation }) {
               {/* Chart Bars */}
               {productSalesChartData.length === 0 ? (
                 <Text style={{ color: 'gray', padding: 10 }}>
-                  {chartCategory ? `No completed sales for ${chartCategory}.` : "Loading..."}
+                  {chartCategory ? `No paid sales for ${chartCategory}.` : "Loading..."}
                 </Text>
               ) : (
                 productSalesChartData.map((item, index) => (

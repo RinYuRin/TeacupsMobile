@@ -13,7 +13,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import API from "./api";
 import Checkbox from "expo-checkbox";
 import { ShoppingCart } from "lucide-react-native";
-import Toast from "react-native-toast-message"; // ✅ Toast Import
+import Toast from "react-native-toast-message";
 
 const HEADER_HEIGHT = 72;
 
@@ -21,12 +21,14 @@ export default function AddToCharts({ navigation }) {
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null);
+  const [username, setUsername] = useState(null); // ✅ ADDED: State for username
   const [selectedItems, setSelectedItems] = useState([]);
 
   const loadCart = async () => {
     setLoading(true);
     try {
       let currentUserId = userId;
+      let currentUsername = username; // ✅ ADDED: Variable for username
 
       if (!currentUserId) {
         const storedUser = await AsyncStorage.getItem("user");
@@ -54,7 +56,9 @@ export default function AddToCharts({ navigation }) {
         }
 
         currentUserId = user._id;
+        currentUsername = user.username; // ✅ ADDED: Get username from stored user
         setUserId(user._id);
+        setUsername(user.username); // ✅ ADDED: Set username state
       }
 
       const response = await fetch(`${API.baseURL}/cart/${currentUserId}`);
@@ -80,6 +84,7 @@ export default function AddToCharts({ navigation }) {
   }, []);
 
   const handleRemove = async (cartItemId, currentQuantity) => {
+    // ... (This function remains unchanged)
     try {
       let response;
       if (currentQuantity > 1) {
@@ -134,6 +139,7 @@ export default function AddToCharts({ navigation }) {
   };
 
   const handleToggleSelect = (cartItemId) => {
+    // ... (This function remains unchanged)
     if (selectedItems.includes(cartItemId)) {
       setSelectedItems(selectedItems.filter((id) => id !== cartItemId));
     } else {
@@ -155,8 +161,10 @@ export default function AddToCharts({ navigation }) {
       const response = await fetch(`${API.baseURL}/orders/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        // ✅ CHANGED: Send username along with userId
         body: JSON.stringify({
           userId: userId,
+          username: username, 
           cartItemIds: selectedItems,
         }),
       });
@@ -196,6 +204,7 @@ export default function AddToCharts({ navigation }) {
     }, 0);
 
   if (loading) {
+    // ... (This section remains unchanged)
     return (
       <View style={[styles.container, styles.center]}>
         <ActivityIndicator size="large" color="#C68B59" />
@@ -207,6 +216,7 @@ export default function AddToCharts({ navigation }) {
   }
 
   return (
+    // ... (The entire return() block and styles remain unchanged)
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         {cart.length > 0 ? (
@@ -299,6 +309,7 @@ export default function AddToCharts({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  // ... (All styles remain unchanged)
   safeArea: { flex: 1, backgroundColor: "#F8F8F8" },
   container: {
     flex: 1,

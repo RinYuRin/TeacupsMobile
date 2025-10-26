@@ -13,15 +13,19 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "requireFullScreen": true 
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
-      "package": "com.rinyurin.yu.TEACUPS"
+      "edgeToEdge": true,
+      "package": "com.rinyurin.yu.TEACUPS",
+      "androidNavigationBar": {
+        "visible": "sticky-immersive"
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
