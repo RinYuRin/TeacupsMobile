@@ -73,8 +73,8 @@ router.post("/create", async (req, res) => {
 // This MUST be defined *before* the '/:userId' route
 router.get("/all", async (req, res) => {
   try {
-    // Find all orders, and select status, createdAt, AND grandTotal
-    const orders = await Order.find({}, 'status createdAt grandTotal');
+    // Find all orders, and select status, createdAt, grandTotal, AND items
+    const orders = await Order.find({}, 'status createdAt grandTotal items');
     res.json(orders);
   } catch (error) {
     console.error("Fetch all orders error:", error);
