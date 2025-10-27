@@ -6,39 +6,32 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true,
-      "requireFullScreen": true 
+      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/icon.png", 
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdge": true,
-      "package": "com.rinyurin.yu.TEACUPS",
-      "androidNavigationBar": {
-        "visible": "sticky-immersive"
-      }
+      "package": "com.rinyurin.yu.TEACUPS"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font",
-      "expo-barcode-scanner"
+      "expo-font"
     ],
     "extra": {
       "eas": {
         "projectId": "b677957e-168e-4336-af94-aa13cc40952f"
       }
     },
-    "owner": "rinyurin.yu"
+    "owner": "rinyurin.yu" 
   }
 }
