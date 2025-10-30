@@ -1,7 +1,7 @@
 "use client"
 
 // 1. Added useEffect and useMemo
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react" // ✅ Added useCallback
 import { View, Text, TouchableOpacity, Image, TextInput, ScrollView, ActivityIndicator } from "react-native"
 import DateTimePickerModal from "react-native-modal-datetime-picker"
 import { Search } from "lucide-react-native"
@@ -16,6 +16,7 @@ import {
   Settings,
   Home,
 } from "lucide-react-native";
+import { useFocusEffect } from "@react-navigation/native"; // ✅ Added this import
 
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
@@ -27,7 +28,33 @@ import API from "./api";
 // Use this image for all products
 const SAMPLE_IMG_URL = "https://images.unsplash.com/photo-1509042239860-f550ce710b93";
 
-// --- REMOVED THE GIANT HARDCODED 'PRODUCTS' OBJECT ---
+// ✅ NEW: Image Map to link DB names to static assets
+const inventoryImageMap = {
+  "Black Tea": require("./assets/image/Inventory/BlackTea.png"),
+  "Green Tea": require("./assets/image/Inventory/GreenTea.png"),
+  "Fresh Milk": require("./assets/image/Inventory/Freshmilk.png"),
+  "Tapioca Pearls": require("./assets/image/Inventory/Pearls.png"),
+  "Coffee Jelly": require("./assets/image/Inventory/Jelly.png"),
+  "Sugar Syrup": require("./assets/image/Inventory/SugarSyrup.png"),
+  "Brown Sugar": require("./assets/image/Inventory/BrownSugar.png"),
+  "Chocolate Syrup": require("./assets/image/Inventory/Chocolate.png"),
+  "Strawberry Syrup": require("./assets/image/Inventory/Strawberry.png"),
+  "Ube Powder": require("./assets/image/Inventory/Ube.png"),
+  "Cups (Regular)": require("./assets/image/Inventory/Cup.png"),
+  "Cups (Medium)": require("./assets/image/Inventory/Cup.png"),
+  "Cups (Large)": require("./assets/image/Inventory/Cup.png"),
+  "Dome Lids": require("./assets/image/Inventory/Lids.png"),
+  "Straws": require("./assets/image/Inventory/Straws.png"),
+  "Sealing Film": require("./assets/image/Inventory/Sealingfilm.png"),
+};
+
+// Helper to get image, falling back to a default if name not in map
+const getInventoryImage = (name) => {
+  // Trim whitespace from name, e.g. "Black Tea " -> "Black Tea"
+  const cleanName = name.trim(); 
+  return inventoryImageMap[cleanName] || require("./assets/image/Inventory/Cup.png"); // Default image
+};
+
 
 export default function Dashboard({ navigation }) {
   const [fontsLoaded] = useFonts({
@@ -47,214 +74,90 @@ export default function Dashboard({ navigation }) {
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [selectedCategory, setSelectedCategory] = useState(null);
 
-  // --- NEW STATE FOR ALL DYNAMIC DATA ---
-  const [allUsers, setAllUsers] = useState([]);
-  const [allOrders, setAllOrders] = useState([]);
-  const [allProducts, setAllProducts] = useState([]); // For /product/fetch
-
-  // --- MODIFICATION 1: Set initial state to null ---
-  const [chartCategory, setChartCategory] = useState(null); // Default chart filter
-  const [isLoading, setIsLoading] = useState(true); // Loading indicator
-
-  const [inventory, setInventory] = useState([
-    // ... (All your inventory data remains unchanged) ...
-        {
-    id: 1,
-    name: "Black Tea ",
-    category: "Tea Base",
-    unit: "1 kg",
-    stock: 10,
-    reorder: 3,
-    image: require("./assets/image/Inventory/BlackTea.png"),
-    lastUpdated: null
-  },
-  {
-    id: 2,
-    name: "Green Tea ",
-    category: "Tea Base",
-    unit: "1 kg",
-    stock: 8,
-    reorder: 3,
-    image: require("./assets/image/Inventory/GreenTea.png"),
-    lastUpdated: null
-  },
-  {
-    id: 3,
-    name: "Fresh Milk",
-    category: "Milk Base",
-    unit: "1 L",
-    stock: 50,
-    reorder: 15,
-    image: require("./assets/image/Inventory/Freshmilk.png"),
-  },
-  {
-    id: 4,
-    name: "Tapioca Pearls",
-    category: "Add-On",
-    unit: "1 kg",
-    stock: 20,
-    reorder: 5,
-    image: require("./assets/image/Inventory/Pearls.png"),
-    lastUpdated: null
-  },
-  {
-    id: 5,
-    name: "Coffee Jelly",
-    category: "Add-On",
-    unit: "1 kg",
-    stock: 10,
-    reorder: 3,
-    image: require("./assets/image/Inventory/Jelly.png"),
-    lastUpdated: null
-  },
-  {
-    id: 6,
-    name: "Sugar Syrup",
-    category: "Sweetener",
-    unit: "1 L",
-    stock: 20,
-    reorder: 5,
-    image: require("./assets/image/Inventory/SugarSyrup.png"),
-    lastUpdated: null
-  },
-  {
-    id: 7,
-    name: "Brown Sugar",
-    category: "Sweetener",
-    unit: "1 kg",
-    stock: 15,
-    reorder: 5,
-    image: require("./assets/image/Inventory/BrownSugar.png"),
-    lastUpdated: null
-  },
-  {
-    id: 8,
-    name: "Chocolate Syrup",
-    category: "Flavor Syrup",
-    unit: "1 L",
-    stock: 10,
-    reorder: 3,
-      image: require("./assets/image/Inventory/Chocolate.png"),
-    lastUpdated: null
-  },
-  {
-    id: 9,
-    name: "Strawberry Syrup",
-    category: "Flavor Syrup",
-    unit: "1 L",
-    stock: 10,
-    reorder: 3,
-    image: require("./assets/image/Inventory/Strawberry.png"),
-    lastUpdated: null
-  },
-  {
-    id: 10,
-    name: "Ube Powder",
-    category: "Flavor Powder",
-    unit: "1 kg",
-    stock: 5,
-    reorder: 2,
-   image: require("./assets/image/Inventory/Ube.png"),
-    lastUpdated: null
-  },
-  {
-    id: 11,
-    name: "Cups (Regular)",
-    category: "Packaging",
-    unit: "100 pcs",
-    stock: 2000,
-    reorder: 500,
-    image: require("./assets/image/Inventory/Cup.png"),
-    lastUpdated: null
-  },
-  {
-    id: 12,
-    name: "Cups (Medium)",
-    category: "Packaging",
-    unit: "100 pcs",
-    stock: 2000,
-    reorder: 500,
-    image: require("./assets/image/Inventory/Cup.png"),
-    lastUpdated: null
-  },
-  {
-    id: 13,
-    name: "Cups (Large)",
-    category: "Packaging",
-    unit: "100 pcs",
-    stock: 2000,
-    reorder: 500,
-    image: require("./assets/image/Inventory/Cup.png"),
-    lastUpdated: null
-  },
-  {
-    id: 14,
-    name: "Dome Lids",
-    category: "Packaging",
-    unit: "100 pcs",
-    stock: 2000,
-    reorder: 500,
-     image: require("./assets/image/Inventory/Lids.png"),
-    lastUpdated: null
-  },
-  {
-    id: 15,
-    name: "Straws",
-    category: "Packaging",
-    unit: "100 pcs",
-    stock: 5000,
-    reorder: 1000,
-    image: require("./assets/image/Inventory/Straws.png"),
-     lastUpdated: null
-  },
-  {
-    id: 16,
-    name: "Sealing Film",
-    category: "Packaging",
-    unit: "100 pcs",
-    stock: 5000,
-    reorder: 1000,
-    image: require("./assets/image/Inventory/Sealingfilm.png"),
-    lastUpdated: null
-  }
-  ])
+  // --- DATA STATE ---
+  const [allPurchases, setAllPurchases] = useState([]); 
+  const [allProducts, setAllProducts] = useState([]); 
+  const [inventory, setInventory] = useState([]); 
   const [editingItem, setEditingItem] = useState(null)
   const [newStock, setNewStock] = useState("")
+  
+  // --- STATE FOR STATS ---
+  const [customerCount, setCustomerCount] = useState(0); 
+  const [dashboardStats, setDashboardStats] = useState(null); 
+  const [isLoading, setIsLoading] = useState(true); 
+  const [chartCategory, setChartCategory] = useState(null); 
 
-  // --- Fetch all dashboard data ---
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setIsLoading(true);
-        const [userRes, orderRes, productRes] = await Promise.all([
-          fetch(`${API.baseURL}/users`),
-          fetch(`${API.baseURL}/orders/all`),
-          fetch(`${API.baseURL}/product/fetch`) // <-- Fetch products
-        ]);
+  // ✅ DELETED: old fetchInventory function
 
-        // Process users
-        const userData = await userRes.json();
-        if (userRes.ok) setAllUsers(userData);
-        else console.error("Failed to fetch users:", userData.message);
+  // --- ✅ DELETED: old useEffect for static data ---
 
-        // Process orders
-        const orderData = await orderRes.json();
-        if (orderRes.ok) setAllOrders(orderData);
-        else console.error("Failed to fetch orders:", orderData.message);
+  // --- ✅ DELETED: old useEffect for dashboard stats ---
 
-        // Process products
-        const productData = await productRes.json();
-        if (productRes.ok) setAllProducts(productData);
-        else console.error("Failed to fetch products:", productData.message);
+  // --- ✅ NEW: Fetch ALL data when screen comes into focus ---
+  useFocusEffect(
+    useCallback(() => {
+      // This function will run every time the screen is focused
+      const fetchData = async () => {
+        // Only fetch all this data if we are on the Dashboard tab
+        if (activeNavItem !== "Dashboard") return; 
+        
+        console.log("Refreshing dashboard data...");
+        setIsLoading(true); // Show loading spinner
 
-      } catch (err) {
-        console.error("Error fetching dashboard data:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchDashboardData();
-  }, []); // Empty array ensures this runs only once on mount
+        try {
+          // --- 1. Fetch Dashboard Stats (depends on tabs) ---
+          const rangeMap = {
+            "Today": "day", "This Week": "week", "Month": "month", "Yearly": "year"
+          };
+          const range = rangeMap[activeTab];
+          const date = selectedDate.toISOString().split('T')[0];
+          const statsRes = await fetch(`${API.baseURL}/purchase/stats?range=${range}&date=${date}`);
+          
+          if (statsRes.ok) {
+            const statsData = await statsRes.json();
+            setDashboardStats(statsData);
+          } else {
+            console.error("Failed to fetch stats:", await statsRes.json());
+            setDashboardStats(null);
+          }
+
+          // --- 2. Fetch all other data simultaneously ---
+          const [productRes, customerRes, purchaseRes, inventoryRes] = await Promise.all([
+            fetch(`${API.baseURL}/product/fetch`),
+            fetch(`${API.baseURL}/purchase/count`),
+            fetch(`${API.baseURL}/purchase`),
+            fetch(`${API.baseURL}/inventory`),
+          ]);
+
+          // Process products
+          if (productRes.ok) setAllProducts(await productRes.json());
+          else console.error("Failed to fetch products");
+          
+          // Process customer count
+          if (customerRes.ok) setCustomerCount((await customerRes.json()).count || 0);
+          else console.error("Failed to fetch customer count");
+
+          // Process purchases
+          if (purchaseRes.ok) setAllPurchases(await purchaseRes.json());
+          else console.error("Failed to fetch purchases");
+
+          // Process inventory
+          if (inventoryRes.ok) setInventory(await inventoryRes.json());
+          else console.error("Failed to fetch inventory");
+
+        } catch (err) {
+          console.error("Error fetching dashboard data:", err);
+        } finally {
+          setIsLoading(false); // Hide loading spinner
+        }
+      };
+
+      fetchData(); // Run the fetch
+      
+      // The effect will re-run if the user changes tabs or the date
+    }, [activeTab, selectedDate, activeNavItem]) 
+  );
+
 
   const showDatePicker = () => setDatePickerVisibility(true)
   const hideDatePicker = () => setDatePickerVisibility(false)
@@ -263,273 +166,65 @@ export default function Dashboard({ navigation }) {
     hideDatePicker()
   }
 
-
-
   const formattedDate = selectedDate.toLocaleString("en-US", {
     month: "long",
     day: "2-digit",
     year: "numeric",
   })
 
-  // --- (REMOVED) Hardcoded statsData ---
-
-  // Helper for formatting numbers (reused for all stats)
+  // Helper for formatting numbers
   const formatStat = (num) => {
-    // This removes the '000,000' padding and uses standard comma formatting
+    if (typeof num !== 'number') return '0';
     return Math.round(num).toLocaleString();
   };
 
-  // ✅ NEW: Helper function for formatting sold counts (e.g., 5.2k)
   const formatSoldCount = (num) => {
+    if (!num) return '0';
     if (num >= 1000) {
       return (num / 1000).toFixed(1) + 'k';
     }
-    return num.toString();
+    return (num || 0).toString();
   };
 
-  // --- All memoized calculations ---
-
-  // Dynamic customer counts
-  const customerCounts = useMemo(() => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay());
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startOfYear = new Date(now.getFullYear(), 0, 1);
-
-    let todayCount = 0, weekCount = 0, monthCount = 0, yearCount = 0;
-    for (const user of allUsers) {
-      if (user.role === 'user') {
-        const createdAt = new Date(user.createdAt);
-        if (createdAt >= startOfYear) { yearCount++;
-          if (createdAt >= startOfMonth) { monthCount++;
-            if (createdAt >= startOfWeek) { weekCount++;
-              if (createdAt >= today) { todayCount++; }
-            }
-          }
-        }
-      }
-    }
-    return {
-      Today: formatStat(todayCount), "This Week": formatStat(weekCount),
-      Month: formatStat(monthCount), Yearly: formatStat(yearCount),
-    };
-  }, [allUsers]);
-
-  // Dynamic order counts
-  const orderCounts = useMemo(() => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay());
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startOfYear = new Date(now.getFullYear(), 0, 1);
-
-    let todayCount = 0, weekCount = 0, monthCount = 0, yearCount = 0;
-    for (const order of allOrders) {
-      if (order.status === 'paid') {
-        const createdAt = new Date(order.createdAt);
-        if (createdAt >= startOfYear) { yearCount++;
-          if (createdAt >= startOfMonth) { monthCount++;
-            if (createdAt >= startOfWeek) { weekCount++;
-              if (createdAt >= today) { todayCount++; }
-            }
-          }
-        }
-      }
-    }
-    return {
-      Today: formatStat(todayCount), "This Week": formatStat(weekCount),
-      Month: formatStat(monthCount), Yearly: formatStat(yearCount),
-    };
-  }, [allOrders]);
-
-  // Dynamic SALES counts
-  const salesCounts = useMemo(() => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay());
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startOfYear = new Date(now.getFullYear(), 0, 1);
-
-    let todaySales = 0, weekSales = 0, monthSales = 0, yearSales = 0;
-    for (const order of allOrders) {
-      if (order.status === 'paid') {
-        const createdAt = new Date(order.createdAt);
-        const saleAmount = order.grandTotal || 0;
-        if (createdAt >= startOfYear) { yearSales += saleAmount;
-          if (createdAt >= startOfMonth) { monthSales += saleAmount;
-            if (createdAt >= startOfWeek) { weekSales += saleAmount;
-              if (createdAt >= today) { todaySales += saleAmount; }
-            }
-          }
-        }
-      }
-    }
-    return {
-      Today: formatStat(todaySales), "This Week": formatStat(weekSales),
-      Month: formatStat(monthSales), Yearly: formatStat(yearSales),
-    };
-  }, [allOrders]);
-
-  // ✅ NEW: Memoized calculation for the single trending product
-  const trendingProduct = useMemo(() => {
-    const productSalesData = new Map();
-
-    // 1. Iterate through all 'paid' orders to aggregate product data
-    for (const order of allOrders) {
-      if (order.status !== 'paid') continue; // Only count paid orders
-
-      const orderDate = new Date(order.createdAt);
-
-      for (const item of order.items) {
-        const productName = item.name;
-        const itemQuantity = item.quantity || 1;
-
-        const data = productSalesData.get(productName);
-
-        if (!data) {
-          // This is the first time we see this product
-          productSalesData.set(productName, {
-            name: productName,
-            totalSold: itemQuantity,
-            firstSoldDate: orderDate, // This is its first sale date
-          });
-        } else {
-          // Update existing product data
-          data.totalSold += itemQuantity;
-          // Check if this order is earlier than the stored firstSoldDate
-          if (orderDate < data.firstSoldDate) {
-            data.firstSoldDate = orderDate;
-          }
-          productSalesData.set(productName, data);
-        }
-      }
-    }
-
-    // 2. Find the best product from the aggregated map
-    const allProductStats = Array.from(productSalesData.values());
-
-    if (allProductStats.length === 0) {
-      // Default placeholder if there are no sales
-      return { name: "No Sales Yet", sold: 0, rating: 0 };
-    }
-
-    // 3. Use reduce to find the winner based on tie-breaker logic
-    const bestProduct = allProductStats.reduce((best, current) => {
-      // Primary Sort: Higher totalSold wins
-      if (current.totalSold > best.totalSold) {
-        return current;
-      }
-      
-      // Secondary Sort (Tie-breaker): Earlier firstSoldDate wins
-      if (current.totalSold === best.totalSold && current.firstSoldDate < best.firstSoldDate) {
-        return current;
-      }
-
-      // Otherwise, keep the current best
-      return best;
-    }, allProductStats[0]); // Start comparison with the first item
-
-    // 4. Return the data needed for the UI
-    return {
-      name: bestProduct.name,
-      sold: bestProduct.totalSold,
-      rating: 4.9, // Keeping rating static as requested
-    };
-
-  }, [allOrders]); // Dependency: only recalculate when orders change
-
-  // Memoized list of all categories
+  // --- Stats from Backend ---
+  const totalRevenue = dashboardStats?.totalRevenue || 0;
+  const totalPurchasedProducts = dashboardStats?.totalPurchasedProducts || 0; 
+  const bestSeller = dashboardStats?.bestSeller || { name: 'N/A', quantity: 0 };
+  
+  // --- Memos for Product Tab & Chart ---
   const allCategories = useMemo(() => {
     const categories = new Set(allProducts.map(p => p.category.toUpperCase()));
     return Array.from(categories);
   }, [allProducts]);
 
-  // Set default chart category when categories load
+  // Set default chart category
   useEffect(() => {
     if (allCategories.length > 0 && !chartCategory) {
-      // Try to find a milktea-related category, otherwise use the first
       const defaultCat =
         allCategories.find(c => c === "MILKTEA") ||
         allCategories.find(c => c === "MILK TEA") ||
         allCategories[0];
       setChartCategory(defaultCat);
     }
-  }, [allCategories, chartCategory]); // Runs when categories are populated
+  }, [allCategories, chartCategory]);
 
   // Memoized map for product -> category lookup
   const productToCategoryMap = useMemo(() => {
     return new Map(allProducts.map(p => [p.name, p.category.toUpperCase()]));
   }, [allProducts]);
 
-  // Dynamic chart data
-  const productSalesChartData = useMemo(() => {
-    if (!chartCategory) {
-      return []; // Return empty if no category is selected yet
-    }
-
-    const productCounts = new Map();
-    const upperChartCategory = chartCategory.toUpperCase();
-
-    // 1. Count products from 'paid' orders
-    for (const order of allOrders) {
-      if (order.status === 'paid') {
-        for (const item of order.items) {
-          // Find the item's category
-          const itemCategory = productToCategoryMap.get(item.name);
-
-          // If the item's category matches the selected chart category
-          if (itemCategory === upperChartCategory) {
-            const currentCount = productCounts.get(item.name) || 0;
-            productCounts.set(item.name, currentCount + (item.quantity || 1)); // Use quantity if available
-          }
-        }
-      }
-    }
-
-    // 2. Convert map to array and sort
-    const sortedData = Array.from(productCounts.entries())
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value); // Sort descending
-
-    // 3. Assign colors
-    const colors = [
-      "#D4A574", "#C4956C", "#B8926A", "#AD8B68", "#A08566",
-      "#967F64", "#8C7962", "#827360", "#786D5E", "#6E675C",
-      "#64615A", "#5A5B58",
-    ];
-
-    return sortedData.map((item, index) => ({
-      ...item,
-      color: colors[index % colors.length], // Cycle through colors
-    }));
-
-  }, [allOrders, chartCategory, productToCategoryMap]);
-
-  // Dynamic max value for chart bars
-  const dynamicMaxValue = useMemo(() => {
-    const max = Math.max(1, ...productSalesChartData.map(item => item.value));
-    return max;
-  }, [productSalesChartData]);
-
-  // --- (NEW) Calculate Sold Counts ---
+  // --- Client-side calculations for "Product" tab popups ---
   const productSoldCount = useMemo(() => {
     const soldCountsMap = new Map();
-    for (const order of allOrders) {
-      if (order.status === 'paid') {
-        for (const item of order.items) {
-          const currentCount = soldCountsMap.get(item.name) || 0;
-          soldCountsMap.set(item.name, currentCount + (item.quantity || 1)); // Use quantity
-        }
+    for (const purchase of allPurchases) { 
+      for (const item of purchase.items) { 
+        const currentCount = soldCountsMap.get(item.name) || 0;
+        soldCountsMap.set(item.name, currentCount + (item.qty || 1)); 
       }
     }
     return soldCountsMap;
-  }, [allOrders]);
+  }, [allPurchases]); 
 
-  // --- (NEW) Calculate Product Sales Details (Daily, Weekly, Monthly, Yearly) ---
   const productSalesDetails = useMemo(() => {
     const salesDetailsMap = new Map();
     const now = new Date();
@@ -539,42 +234,126 @@ export default function Dashboard({ navigation }) {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfYear = new Date(now.getFullYear(), 0, 1);
 
-    for (const order of allOrders) {
-      if (order.status === 'paid') {
-        const createdAt = new Date(order.createdAt);
-
-        for (const item of order.items) {
-          const itemName = item.name;
-          const itemQuantity = item.quantity || 1;
-
-          // Get or initialize product data
-          const productData = salesDetailsMap.get(itemName) || {
-            daily: 0,
-            weekly: 0,
-            monthly: 0,
-            yearly: 0,
-          };
-
-          // Add quantity based on date
-          if (createdAt >= startOfYear) {
-            productData.yearly += itemQuantity;
-            if (createdAt >= startOfMonth) {
-              productData.monthly += itemQuantity;
-              if (createdAt >= startOfWeek) {
-                productData.weekly += itemQuantity;
-                if (createdAt >= today) {
-                  productData.daily += itemQuantity;
-                }
-              }
+    for (const purchase of allPurchases) { 
+      const createdAt = new Date(purchase.createdAt); 
+      for (const item of purchase.items) { 
+        const itemName = item.name;
+        const itemQuantity = item.qty || 1; 
+        const productData = salesDetailsMap.get(itemName) || {
+          daily: 0, weekly: 0, monthly: 0, yearly: 0,
+        };
+        if (createdAt >= startOfYear) { productData.yearly += itemQuantity;
+          if (createdAt >= startOfMonth) { productData.monthly += itemQuantity;
+            if (createdAt >= startOfWeek) { productData.weekly += itemQuantity;
+              if (createdAt >= today) { productData.daily += itemQuantity; }
             }
           }
-          // Save back to map
-          salesDetailsMap.set(itemName, productData);
         }
+        salesDetailsMap.set(itemName, productData);
       }
     }
     return salesDetailsMap;
-  }, [allOrders]);
+  }, [allPurchases]); 
+  
+  // Chart data now reads from `allPurchases`
+  const productSalesChartData = useMemo(() => {
+    if (!chartCategory) {
+      return []; 
+    }
+    const productCounts = new Map();
+    const upperChartCategory = chartCategory.toUpperCase();
+
+    for (const purchase of allPurchases) { 
+      for (const item of purchase.items) {
+        const itemCategory = productToCategoryMap.get(item.name);
+        if (itemCategory === upperChartCategory) {
+          const currentCount = productCounts.get(item.name) || 0;
+          productCounts.set(item.name, currentCount + (item.qty || 1)); 
+        }
+      }
+    }
+    const sortedData = Array.from(productCounts.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value); 
+    const colors = [
+      "#D4A574", "#C4956C", "#B8926A", "#AD8B68", "#A08566",
+      "#967F64", "#8C7962", "#827360", "#786D5E", "#6E675C",
+      "#64615A", "#5A5B58",
+    ];
+    return sortedData.map((item, index) => ({
+      ...item,
+      color: colors[index % colors.length], 
+    }));
+  }, [allPurchases, chartCategory, productToCategoryMap]); 
+
+  // Dynamic max value for chart bars
+  const dynamicMaxValue = useMemo(() => {
+    const max = Math.max(1, ...productSalesChartData.map(item => item.value));
+    return max;
+  }, [productSalesChartData]);
+
+  // This list powers the "Product" tab
+  const productList = useMemo(() => {
+    return allProducts.map(p => {
+      const salesDetails = productSalesDetails.get(p.name) || {
+        daily: 0, weekly: 0, monthly: 0, yearly: 0
+      };
+      return {
+        ...p,
+        sold: productSoldCount.get(p.name) || 0, 
+        rating: 4.5,
+        image: p.image || SAMPLE_IMG_URL,
+        dailySales: salesDetails.daily, 
+        weeklySales: salesDetails.weekly, 
+        monthlySales: salesDetails.monthly, 
+        yearlySales: salesDetails.yearly, 
+        prices: {
+          regular: p.priceS ? Number(p.priceS) : undefined,
+          medium: p.priceM ? Number(p.priceM) : undefined,
+          large: p.priceL ? Number(p.priceL) : undefined,
+          buy1take1: p.priceB ? Number(p.priceB) : undefined,
+        }
+      }
+    });
+  }, [allProducts, productSoldCount, productSalesDetails]); 
+
+  const filteredProducts = productList.filter((p) =>
+    p.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // ✅ Handle saving stock change
+  const handleEditStock = async () => {
+    if (!editingItem || !newStock) return;
+
+    try {
+      const response = await fetch(`${API.baseURL}/inventory/${editingItem._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editingItem.name, // Send name back
+          stock: Number(newStock) // Send new stock
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update stock');
+      }
+
+      // Success!
+      setEditingItem(null); // Close modal
+      setNewStock(""); // Clear input
+      
+      // ✅ Manually re-fetch JUST inventory after update
+      const inventoryRes = await fetch(`${API.baseURL}/inventory`);
+      if (inventoryRes.ok) {
+        setInventory(await inventoryRes.json());
+      }
+    
+    } catch (err) {
+      console.error("Error updating stock:", err);
+      // You could show a toast here
+    }
+  };
 
   const navItems = [
     // ... (All your nav items remain unchanged) ...
@@ -584,42 +363,6 @@ export default function Dashboard({ navigation }) {
     { icon: BarChart3, label: "Reports", id: "Reports" },
     { icon: Settings, label: "Settings", id: "Settings" },
   ]
-
-  // --- (MODIFIED) Dynamic productList for "Product" tab ---
-  const productList = useMemo(() => {
-    return allProducts.map(p => {
-      // Get the dynamic sales details for this product
-      const salesDetails = productSalesDetails.get(p.name) || {
-        daily: 0, weekly: 0, monthly: 0, yearly: 0
-      };
-
-      return {
-        ...p, // Spread all properties from the DB product
-        sold: productSoldCount.get(p.name) || 0, // Get dynamic total sold count
-        rating: 4.5, // Keep placeholder
-        image: p.image || SAMPLE_IMG_URL, // Use DB image or fallback
-        // --- MODIFICATION: Use dynamic sales data ---
-        dailySales: salesDetails.daily,
-        weeklySales: salesDetails.weekly,
-        monthlySales: salesDetails.monthly,
-        yearlySales: salesDetails.yearly, // Add yearly sales
-        // --- END MODIFICATION ---
-        // Format prices to match old structure
-        prices: {
-          regular: p.priceS ? Number(p.priceS) : undefined,
-          medium: p.priceM ? Number(p.priceM) : undefined,
-          large: p.priceL ? Number(p.priceL) : undefined,
-          buy1take1: p.priceB ? Number(p.priceB) : undefined,
-        }
-      }
-    });
-  }, [allProducts, productSoldCount, productSalesDetails]); // Add dependencies
-
-  // This filter now works on the dynamic productList
-  const filteredProducts = productList.filter((p) =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
   // --- RENDER ---
   if (!fontsLoaded) {
     return (
@@ -641,13 +384,14 @@ export default function Dashboard({ navigation }) {
         }}
       >
         {/* Loading Indicator */}
-        {isLoading && activeNavItem === "Dashboard" && (
+        {(isLoading) && activeNavItem === "Dashboard" && (
           <ActivityIndicator size="large" color="#8B4513" style={{ marginVertical: 40 }} />
         )}
 
         {/* DASHBOARD CONTENT */}
-        {!isLoading && activeNavItem === "Dashboard" && (
+        {(!isLoading) && activeNavItem === "Dashboard" && (
           <>
+            {/* ... (Dashboard content: Header, Tabs, Stats Cards, Best Seller... remains unchanged) ... */}
             {/* Header */}
             <View style={{
               flexDirection: "row",
@@ -658,16 +402,6 @@ export default function Dashboard({ navigation }) {
                 <Text style={{ fontSize: 22, fontWeight: "bold", fontFamily: "Poppins-Bold" }}>Hi, Miss Rhea</Text>
                 <Text style={{ fontSize: 14, color: "gray", fontFamily: "Poppins-Regular" }}>Administrator</Text>
               </View>
-              {/* ✅ REMOVED: Icon View
-              <View style={{ flexDirection: "row", gap: 12 }}>
-                <TouchableOpacity>
-                  <MessageCircle size={22} color="gray" />
-                </TouchableOpacity>
-                <TouchableOpacity>
-                  <Bell size={22} color="gray" />
-                </TouchableOpacity>
-              </View>
-              */}
             </View>
 
             {/* Tabs + Date */}
@@ -722,6 +456,7 @@ export default function Dashboard({ navigation }) {
               gap: 10,
               marginBottom: 20,
             }}>
+              {/* ✅ MODIFIED: "Total Order" card (backend) */}
               <View style={{
                 flex: 1,
                 backgroundColor: "#D4C4B0",
@@ -735,10 +470,11 @@ export default function Dashboard({ navigation }) {
                 <View>
                   <Text>Total Order</Text>
                   <Text style={{ fontSize: 22, fontWeight: "bold" }}>
-                    {orderCounts[activeTab]}
+                    {formatStat(totalPurchasedProducts)}
                   </Text>
                 </View>
               </View>
+              {/* ✅ MODIFIED: "Total Customer" card (backend) */}
               <View style={{
                 flex: 1,
                 backgroundColor: "#E6D7A3",
@@ -750,12 +486,13 @@ export default function Dashboard({ navigation }) {
               }}>
                 <FontAwesome name="user-plus" size={28} color="#8B4513" />
                 <View>
-                  <Text>New Customer</Text>
+                  <Text>Total Customer</Text>
                   <Text style={{ fontSize: 22, fontWeight: "bold" }}>
-                    {customerCounts[activeTab]}
+                    {formatStat(customerCount)}
                   </Text>
                 </View>
               </View>
+              {/* ✅ MODIFIED: "Total Sales" card (backend) */}
               <View style={{
                 width: "100%",
                 backgroundColor: "#C4956C",
@@ -770,13 +507,13 @@ export default function Dashboard({ navigation }) {
                 <View>
                   <Text>Total Sales</Text>
                   <Text style={{ fontSize: 22, fontWeight: "bold" }}>
-                    ₱{salesCounts[activeTab]}
+                    ₱{formatStat(totalRevenue)}
                   </Text>
                 </View>
               </View>
             </View>
 
-            {/* ✅ MODIFIED: Dynamic Trending Product */}
+            {/* ✅ MODIFIED: Dynamic Trending Product (backend) */}
             <View style={{
               backgroundColor: "#fff",
               borderRadius: 12,
@@ -789,7 +526,6 @@ export default function Dashboard({ navigation }) {
                 }}
                 style={{ width: "100%", height: 150 }}
               />
-              {/* Added a background overlay for text readability */}
               <View style={{ 
                 position: "absolute", 
                 bottom: 12, 
@@ -800,21 +536,21 @@ export default function Dashboard({ navigation }) {
                 borderRadius: 5 
               }}>
                 <Text style={{ fontSize: 16, fontWeight: "bold", color: "white" }}>
-                  {trendingProduct.name}
+                  {bestSeller.name}
                 </Text>
                 <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
                   <Text style={{ color: "white", marginRight: 8 }}>
-                    {formatSoldCount(trendingProduct.sold)} Sold
+                    {formatSoldCount(bestSeller.quantity)} Sold
                   </Text>
                   <Star size={14} color="yellow" fill="yellow" />
                   <Text style={{ color: "white", marginLeft: 4 }}>
-                    {trendingProduct.rating}
+                    4.9
                   </Text>
                 </View>
               </View>
             </View>
 
-            {/* --- DYNAMIC Chart --- */}
+            {/* --- ✅ RESTORED: DYNAMIC Chart --- */}
             <View style={{
               backgroundColor: "#fff",
               borderRadius: 12,
@@ -857,7 +593,7 @@ export default function Dashboard({ navigation }) {
               {/* Chart Bars */}
               {productSalesChartData.length === 0 ? (
                 <Text style={{ color: 'gray', padding: 10 }}>
-                  {chartCategory ? `No paid sales for ${chartCategory}.` : "Loading..."}
+                  {chartCategory ? `No sales data for ${chartCategory}.` : "Loading..."}
                 </Text>
               ) : (
                 productSalesChartData.map((item, index) => (
@@ -884,7 +620,7 @@ export default function Dashboard({ navigation }) {
                         borderRadius: 6,
                       }} />
                     </View>
-                    <Text style={{ width: 30, fontSize: 12 }}>{item.value}</Text>
+                    <Text style={{ width: 30, fontSize: 12, textAlign: 'right' }}>{item.value}</Text>
                   </View>
                 ))
               )}
@@ -892,8 +628,9 @@ export default function Dashboard({ navigation }) {
           </>
         )}
 
-        {/* --- DYNAMIC PRODUCT CONTENT --- */}
+        {/* --- DYNAMIC PRODUCT CONTENT (Unchanged) --- */}
         {activeNavItem === "Product" && (
+          // ... (Product tab content remains unchanged) ...
           <View>
             {/* Search Bar */}
             <View style={{
@@ -996,7 +733,7 @@ export default function Dashboard({ navigation }) {
                       )}
                       <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
                         <Text style={{ color: "black", marginRight: 8 }}>
-                          {product.sold} Sold {/* Now uses dynamic sold count */}
+                          {product.sold} Sold {/* ✅ Now uses purchase data */}
                         </Text>
                         <Star size={14} color="gold" fill="gold" />
                         <Text style={{ color: "black", marginLeft: 4 }}>
@@ -1011,16 +748,15 @@ export default function Dashboard({ navigation }) {
           </View>
         )}
 
-        {/* INVENTORY CONTENT */}
+        {/* ✅ INVENTORY CONTENT (NOW USES DB DATA) */}
         {activeNavItem === "Inventory" && (
-          // ... (Inventory content remains unchanged) ...
           <View>
             <Text style={{ fontSize: 20, fontWeight: "bold", marginBottom: 16, fontFamily: "Poppins-Bold" }}>
               Inventory List
             </Text>
             {inventory.map((item) => (
               <View
-                key={item.id}
+                key={item._id} // Use _id from database
                 style={{
                   backgroundColor: "#fff",
                   padding: 12,
@@ -1030,23 +766,26 @@ export default function Dashboard({ navigation }) {
                   alignItems: "center",
                 }}
               >
-                <Image source={item.image} style={{ width: 40, height: 40, marginRight: 12 }} />
+                {/* Use the image map helper */}
+                <Image source={getInventoryImage(item.name)} style={{ width: 40, height: 40, marginRight: 12 }} />
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 16, fontWeight: "bold", fontFamily: "Poppins-Bold" }}>{item.name}</Text>
-                  <Text style={{ color: "gray", fontFamily: "Poppins-Regular" }}>Category: {item.category}</Text>
-                  <Text style={{ fontFamily: "Poppins-Regular" }}>Stock: {item.stock} {item.unit}</Text>
-                  <Text style={{ color: item.stock <= item.reorder ? "red" : "green", fontFamily: "Poppins-Regular" }}>
-                    Reorder Level: {item.reorder} {item.unit}
+                  
+                  {/* REMOVED: Category, Unit, Reorder, as they are not in the DB schema */}
+                  
+                  <Text style={{ fontFamily: "Poppins-Regular" }}>Stock: {item.stock}</Text>
+                  
+                  {/* ADDED: Status from DB */}
+                  <Text style={{ 
+                    fontFamily: "Poppins-Regular",
+                    color: item.status === 'Low Stock' ? '#E6A23C' : item.status === 'Out of Stock' ? '#F56C6C' : '#67C23A' 
+                  }}>
+                    Status: {item.status}
                   </Text>
-                  {item.lastUpdated && (
-                    <Text style={{ color: "#888", fontSize: 12, fontFamily: "Poppins-LightItalic" }}>
-                      Last Updated: {item.lastUpdated}
-                    </Text>
-                  )}
                 </View>
                 <TouchableOpacity
                   onPress={() => {
-                    setEditingItem(item)
+                    setEditingItem(item) // item now contains _id
                     setNewStock(item.stock.toString())
                   }}
                   style={{
@@ -1066,9 +805,8 @@ export default function Dashboard({ navigation }) {
         )}
       </ScrollView>
 
-      {/* EDIT STOCK MODAL */}
+      {/* ✅ EDIT STOCK MODAL (NOW CALLS API) */}
       {editingItem && (
-        // ... (Edit Stock Modal remains unchanged) ...
         <BlurView
           intensity={30}
           tint="dark"
@@ -1121,16 +859,7 @@ export default function Dashboard({ navigation }) {
             />
 
             <TouchableOpacity
-              onPress={() => {
-                setInventory((prev) =>
-                  prev.map((inv) =>
-                    inv.id === editingItem.id
-                      ? { ...inv, stock: parseInt(newStock), lastUpdated: new Date().toLocaleString() }
-                      : inv
-                  )
-                )
-                setEditingItem(null)
-              }}
+              onPress={handleEditStock} // ✅ Use the new API call function
               style={{
                 backgroundColor: "#8B4513",
                 paddingVertical: 10,
@@ -1147,7 +876,7 @@ export default function Dashboard({ navigation }) {
         </BlurView>
       )}
 
-      {/* Bottom Navigation */}
+      {/* Bottom Navigation (Unchanged) */}
       <View style={{
         backgroundColor: "#fff",
         flexDirection: "row",
@@ -1173,7 +902,7 @@ export default function Dashboard({ navigation }) {
               }}
               style={{ alignItems: "center" }}
             >
-              <Icon size={22} color={activeNavItem === item.id ? "#8B4s13" : "gray"} />
+              <Icon size={22} color={activeNavItem === item.id ? "#8B4513" : "gray"} />
               <Text style={{
                 fontSize: 12,
                 color: activeNavItem === item.id ? "#8B4513" : "gray",
@@ -1183,7 +912,7 @@ export default function Dashboard({ navigation }) {
             </TouchableOpacity>
           )
         })}
-        {/* --- DYNAMIC Product Popup Modal --- */}
+        {/* --- DYNAMIC Product Popup Modal (NOW USES PURCHASE DATA) --- */}
         {selectedProduct && (
           <BlurView
             intensity={0}
@@ -1246,7 +975,7 @@ export default function Dashboard({ navigation }) {
                 </View>
               )}
 
-              {/* --- MODIFICATION: DYNAMIC SALES DETAILS --- */}
+              {/* --- MODIFICATION: DYNAMIC SALES DETAILS (NOW USES PURCHASE DATA) --- */}
               <View style={{ marginBottom: 16, width: "100%" }}>
                 <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
                   <FontAwesome name="calendar" size={18} color="#8B4513" style={{ marginRight: 6 }} />

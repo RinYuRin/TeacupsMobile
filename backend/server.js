@@ -1,5 +1,5 @@
-import dotenv from "dotenv";
-dotenv.config();
+import "./config.js";
+
 console.log("SERVER.JS: PubKey =", process.env.IMGKIT_PUBKEY);
 
 import express from "express";
@@ -16,6 +16,8 @@ import productRoutes from "./routes/productRoutes.js";
 import cartRoutes from "./routes/cartRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import purchaseRoutes from "./routes/purchaseRoutes.js";
+import inventoryRoutes from "./routes/inventoryRoutes.js";
 
 //dotenv.config();
 
@@ -60,6 +62,9 @@ app.use("/api/product", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/purchase", purchaseRoutes);
+app.use("/api/inventory", inventoryRoutes);
+
 
 // ====== Static Files ======
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));

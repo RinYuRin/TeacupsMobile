@@ -215,12 +215,23 @@ router.post(
         return res.status(404).json({ message: "User not found." });
       }
 
-      // Update text fields
+      // --- ✅ START: MODIFICATION ---
+      // For required fields, keep the old value if the new one is empty
       user.username = username || user.username;
-      user.nickname = nickname || user.nickname;
       user.email = email || user.email;
-      user.phone = phone || user.phone;
-      user.address = address || user.address;
+
+      // For optional fields, allow them to be cleared
+      // We check if the value was sent (it'll be "" if blank, or "new value")
+      if (nickname !== undefined) {
+        user.nickname = nickname;
+      }
+      if (phone !== undefined) {
+        user.phone = phone;
+      }
+      if (address !== undefined) {
+        user.address = address;
+      }
+      // --- ✅ END: MODIFICATION ---
 
       // Update image ONLY if a new one was uploaded
       if (req.body.image) {

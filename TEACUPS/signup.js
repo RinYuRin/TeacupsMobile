@@ -1,5 +1,5 @@
-"use client"
-import { useState, useCallback } from "react"
+"use client";
+import { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -12,14 +12,17 @@ import {
   Modal,
   TouchableWithoutFeedback,
   Switch,
-  Alert,
-} from "react-native"
+  Alert, // Keep Alert for now, but we'll switch to Toast
+  KeyboardAvoidingView, // ✅ Added for layout
+  Platform, // ✅ Added for layout
+} from "react-native";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import Checkbox from "expo-checkbox";
+import Toast from "react-native-toast-message"; // ✅ Added for notifications
 import API from "./api";
 
-SplashScreen.preventAutoHideAsync()
+SplashScreen.preventAutoHideAsync();
 
 // Long text for Terms and Conditions
 const TERMS_AND_CONDITIONS_TEXT = `Welcome to TeaCUPS! These Terms and Conditions ("Terms") govern your access to and use of the TeaCUPS mobile application (the "App"), whether as a user or admin. TeaCUPS ("we", "us", or "our") provides a platform for browsing, ordering, and managing tea and coffee shop items through a mobile device.
@@ -118,7 +121,7 @@ If you have questions or concerns regarding these Terms, please contact us at:
 TeaCUPS Customer Support
 Email: [insert email address]
 Phone: [insert phone number]
-Address: [insert office address]`
+Address: [insert office address]`;
 
 // Long text for Privacy Policy
 const PRIVACY_POLICY_TEXT = `Privacy Policy – TeaCUPS Mobile Application
@@ -155,12 +158,12 @@ Request deletion of your account and data
 Opt out of notifications or promotional emails
 
 6. Changes to This Policy
-We may update this policy from time to time. Continued use of the App after changes indicates acceptance.
+We may update this policy from time totime. Continued use of the App after changes indicates acceptance.
 
 7. Contact Us
 Email: [Insert Support Email]
 Phone: [Insert Phone Number]
-Address: [Insert Company Address]`
+Address: [Insert Company Address]`;
 
 // Long text for Refund Policy (Agreement)
 const REFUND_POLICY_TEXT = `Refund Policy – TeaCUPS Mobile Application
@@ -188,42 +191,42 @@ Approved refunds will be processed via the original payment method within 5–7 
 
 5. Contact for Refunds
 Email: [Insert Support Email]
-Subject: "Refund Request – Order #[Order Number]"`
+Subject: "Refund Request – Order #[Order Number]"`;
 
 // Helper function to render text with bolded numbered headings
 const renderNumberedText = (text) => {
-  const lines = text.split("\n")
+  const lines = text.split("\n");
   return lines.map((line, index) => {
     // Regex to match a number followed by a dot and optional space at the beginning of a line
-    const isNumberedHeading = line.match(/^\d+\.\s/)
+    const isNumberedHeading = line.match(/^\d+\.\s/);
     if (isNumberedHeading) {
       // If it's a numbered heading, apply boldText style to the entire line
       return (
         <Text key={index} style={[styles.modalText, styles.boldText]}>
           {line}
         </Text>
-      )
+      );
     }
     // If not a numbered heading, render with default modalText style
     return (
       <Text key={index} style={styles.modalText}>
         {line}
       </Text>
-    )
-  })
-}
+    );
+  });
+};
 
 export default function SignUpScreen({ navigation }) {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [acceptTerms, setAcceptTerms] = useState(false)
-  const [acceptPolicy, setAcceptPolicy] = useState(false)
-  const [showTermsModal, setShowTermsModal] = useState(false)
-  const [showPolicyModal, setShowPolicyModal] = useState(false)
-  const [showAgreementModal, setShowAgreementModal] = useState(false) // New state for Agreement modal
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [acceptPolicy, setAcceptPolicy] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [showPolicyModal, setShowPolicyModal] = useState(false);
+  const [showAgreementModal, setShowAgreementModal] = useState(false); // New state for Agreement modal
 
   const [role, setRole] = useState("user");
 
@@ -234,21 +237,34 @@ export default function SignUpScreen({ navigation }) {
     "Poppins-Light": require("./assets/font/Poppins/Poppins-Light.ttf"),
     "Poppins-ExtraBold": require("./assets/font/Poppins/Poppins-ExtraBold.ttf"),
     "Poppins-LightItalic": require("./assets/font/Poppins/Poppins-LightItalic.ttf"),
-  })
+  });
 
   const onLayoutRootView = useCallback(async () => {
     if (fontsLoaded) {
-      await SplashScreen.hideAsync()
+      await SplashScreen.hideAsync();
     }
-  }, [fontsLoaded])
+  }, [fontsLoaded]);
+
+  // ✅ Re-usable Toast function (like in login.js)
+  const showToast = (type, title, message) => {
+    Toast.show({
+      type,
+      text1: title,
+      text2: message,
+      position: "top",
+      visibilityTime: 2500,
+      topOffset: 50,
+    });
+  };
 
   const handleSignUp = async () => {
     if (password !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match!");
+      showToast("error", "Error", "Passwords do not match!"); // ✅ Use Toast
       return;
     }
     if (!acceptTerms || !acceptPolicy) {
-      Alert.alert(
+      showToast( // ✅ Use Toast
+        "error",
         "Error",
         "You must accept both the Terms and Conditions and the Policy and Agreement!"
       );
@@ -265,15 +281,25 @@ export default function SignUpScreen({ navigation }) {
       const data = await response.json();
 
       if (response.ok) {
-        Alert.alert("Success", data.message, [
-          { text: "OK", onPress: () => navigation.navigate("Login") },
-        ]);
+        showToast( // ✅ Use Toast
+          "success",
+          "Success",
+          data.message || "Account created successfully!"
+        );
+        // Navigate after a delay so user can see the toast
+        setTimeout(() => {
+          navigation.navigate("Login");
+        }, 1500);
       } else {
-        Alert.alert("Signup Failed", data.message || "An unknown error occurred.");
+        showToast( // ✅ Use Toast
+          "error",
+          "Signup Failed",
+          data.message || "An unknown error occurred."
+        );
       }
     } catch (error) {
       console.error("Signup fetch error:", error);
-      Alert.alert("Network Error", "Unable to connect to the server.");
+      showToast("error", "Network Error", "Unable to connect to the server."); // ✅ Use Toast
     }
   };
 
@@ -283,136 +309,160 @@ export default function SignUpScreen({ navigation }) {
   };
 
   if (!fontsLoaded) {
-    return null
+    return null;
   }
 
   return (
     <View style={styles.fullScreenContainer} onLayout={onLayoutRootView}>
       <RNStatusBar barStyle="light-content" backgroundColor="#806153" />
       <View style={styles.headerBar} />
-      {/* --- MODIFICATION 1: Added scrollEnabled={false} --- */}
-      <ScrollView contentContainerStyle={styles.scrollViewContent} scrollEnabled={false}>
-        <View style={styles.topIllustrationContainer}>
-          <Image source={require("./assets/image/signup.png")} style={styles.topIllustration} />
-          <View style={styles.topTextOverlay}>
-            <Text style={styles.logInTitle}>SIGN UP</Text>
-            <Text style={styles.toContinueText}>TO CONTINUE</Text>
+
+      {/* ✅ MODIFICATION: Added KeyboardAvoidingView */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }} // Make it take up all available space
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        {/* ✅ MODIFICATION: Removed scrollEnabled={false} */}
+        <ScrollView contentContainerStyle={styles.scrollViewContent}>
+          <View style={styles.topIllustrationContainer}>
+            <Image
+              source={require("./assets/image/signup.png")}
+              style={styles.topIllustration}
+            />
+            <View style={styles.topTextOverlay}>
+              <Text style={styles.logInTitle}>SIGN UP</Text>
+              <Text style={styles.toContinueText}>TO CONTINUE</Text>
+            </View>
           </View>
-        </View>
-        <View style={styles.formContainer}>
-          {/* Email Input */}
-          <View style={styles.inputRowContainer}>
-            <View style={styles.inputArea}>
-              <TextInput
-                style={styles.input}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                placeholder="Email"
-                placeholderTextColor="#555"
+          <View style={styles.formContainer}>
+            {/* Email Input */}
+            <View style={styles.inputRowContainer}>
+              <View style={styles.inputArea}>
+                <TextInput
+                  style={styles.input}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  placeholder="Email"
+                  placeholderTextColor="#555"
+                />
+              </View>
+              <Image
+                source={require("./assets/image/email.png")}
+                style={styles.inputSideIcon}
               />
             </View>
-            <Image source={require("./assets/image/email.png")} style={styles.inputSideIcon} />
-          </View>
-          {/* Password Input */}
-          <View style={styles.inputRowContainer}>
-            <View style={styles.inputArea}>
-              <View style={styles.passwordInputWrapper}>
-                <TextInput
-                  style={styles.passwordInput}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  placeholder="Password"
-                  placeholderTextColor="#555"
-                />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-                  <Image
-                    source={
-                      showPassword
-                        ? require("./assets/image/password=show.png")
-                        : require("./assets/image/password=hide.png")
-                    }
-                    style={styles.iconImage}
+            {/* Password Input */}
+            <View style={styles.inputRowContainer}>
+              <View style={styles.inputArea}>
+                <View style={styles.passwordInputWrapper}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    placeholder="Password"
+                    placeholderTextColor="#555"
                   />
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={styles.eyeIcon}
+                  >
+                    <Image
+                      source={
+                        showPassword
+                          ? require("./assets/image/password=show.png")
+                          : require("./assets/image/password=hide.png")
+                      }
+                      style={styles.iconImage}
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
+              <Image
+                source={require("./assets/image/pass.png")}
+                style={styles.inputSideIcon}
+              />
             </View>
-            <Image source={require("./assets/image/pass.png")} style={styles.inputSideIcon} />
-          </View>
-          {/* Confirm Password Input */}
-          <View style={styles.inputRowContainer}>
-            <View style={styles.inputArea}>
-              <View style={styles.passwordInputWrapper}>
-                <TextInput
-                  style={styles.passwordInput}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry={!showConfirmPassword}
-                  placeholder="Confirm password"
-                  placeholderTextColor="#555"
-                />
-                <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeIcon}>
-                  <Image
-                    source={
-                      showConfirmPassword
-                        ? require("./assets/image/password=show.png")
-                        : require("./assets/image/password=hide.png")
-                    }
-                    style={styles.iconImage}
+            {/* Confirm Password Input */}
+            <View style={styles.inputRowContainer}>
+              <View style={styles.inputArea}>
+                <View style={styles.passwordInputWrapper}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry={!showConfirmPassword}
+                    placeholder="Confirm password"
+                    placeholderTextColor="#555"
                   />
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    style={styles.eyeIcon}
+                  >
+                    <Image
+                      source={
+                        showConfirmPassword
+                          ? require("./assets/image/password=show.png")
+                          : require("./assets/image/password=hide.png")
+                      }
+                      style={styles.iconImage}
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
+              <Image
+                source={require("./assets/image/copass.png")}
+                style={styles.inputSideIcon}
+              />
             </View>
-            <Image source={require("./assets/image/copass.png")} style={styles.inputSideIcon} />
-          </View>
 
-          {/* --- FIX 2: Corrected View nesting --- */}
-          {/* Terms and Conditions Checkbox */}
-          <View style={styles.termsContainer}>
-            <Checkbox
-              value={acceptTerms}
-              onValueChange={setAcceptTerms}
-              color={acceptTerms ? "#AD9761" : "#CCC"}
-              style={styles.checkbox}
-            />
-            <Text style={styles.termsText}>
-              I have accept the{" "}
-              <TouchableOpacity onPress={() => setShowTermsModal(true)}>
-                <Text style={styles.termsLink}>Terms</Text>
-              </TouchableOpacity>{" "}
-              and{" "}
-              <TouchableOpacity onPress={() => setShowTermsModal(true)}>
-                <Text style={styles.termsLink}>Conditions</Text>
-              </TouchableOpacity>
-            </Text>
-          </View>
-          
-          {/* Policy and Agreement Checkbox */}
-          <View style={styles.termsContainer}>
-            <Checkbox
-              value={acceptPolicy}
-              onValueChange={setAcceptPolicy}
-              color={acceptPolicy ? "#AD9761" : "#CCC"}
-              style={styles.checkbox}
-            />
-            <Text style={styles.termsText}>
-              I have accept the{" "}
-              <TouchableOpacity onPress={() => setShowPolicyModal(true)}>
-                <Text style={styles.termsLink}>Policy</Text>
-              </TouchableOpacity>{" "}
-              and{" "}
-              <TouchableOpacity onPress={() => setShowAgreementModal(true)}>
-                <Text style={styles.termsLink}>Agreement</Text>
-              </TouchableOpacity>
-            </Text>
-          </View>
-          {/* --- End of FIX 2 --- */}
+            {/* --- FIX 2: Corrected View nesting --- */}
+            {/* Terms and Conditions Checkbox */}
+            <View style={styles.termsContainer}>
+              <Checkbox
+                value={acceptTerms}
+                onValueChange={setAcceptTerms}
+                color={acceptTerms ? "#AD9761" : "#CCC"}
+                style={styles.checkbox}
+              />
+              <Text style={styles.termsText}>
+                I have accept the{" "}
+                <TouchableOpacity onPress={() => setShowTermsModal(true)}>
+                  <Text style={styles.termsLink}>Terms</Text>
+                </TouchableOpacity>{" "}
+                and{" "}
+                <TouchableOpacity onPress={() => setShowTermsModal(true)}>
+                  <Text style={styles.termsLink}>Conditions</Text>
+                </TouchableOpacity>
+              </Text>
+            </View>
 
-          {/* --- MODIFICATION 2: Commented out Admin Switch --- */}
-          {/* <View style={styles.termsContainer}>
+            {/* Policy and Agreement Checkbox */}
+            <View style={styles.termsContainer}>
+              <Checkbox
+                value={acceptPolicy}
+                onValueChange={setAcceptPolicy}
+                color={acceptPolicy ? "#AD9761" : "#CCC"}
+                style={styles.checkbox}
+              />
+              <Text style={styles.termsText}>
+                I have accept the{" "}
+                <TouchableOpacity onPress={() => setShowPolicyModal(true)}>
+                  <Text style={styles.termsLink}>Policy</Text>
+                </TouchableOpacity>{" "}
+                and{" "}
+                <TouchableOpacity onPress={() => setShowAgreementModal(true)}>
+                  <Text style={styles.termsLink}>Agreement</Text>
+                </TouchableOpacity>
+              </Text>
+            </View>
+            {/* --- End of FIX 2 --- */}
+
+            {/* --- MODIFICATION 2: Commented out Admin Switch --- */}
+            {/* <View style={styles.termsContainer}>
             <Text style={[styles.termsText, { flex: 1, fontSize: 14 }]}>
               Sign up as Admin:
             </Text>
@@ -426,17 +476,18 @@ export default function SignUpScreen({ navigation }) {
             />
           </View>
           */}
-          <TouchableOpacity style={styles.loginButton} onPress={handleSignUp}>
-            <Text style={styles.loginButtonText}>SIGN UP</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.signUpContainer}>
-          <Text style={styles.signUpText}>Already have an Account? </Text>
-          <TouchableOpacity onPress={handleLogin}>
-            <Text style={styles.signUpLink}>Login</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+            <TouchableOpacity style={styles.loginButton} onPress={handleSignUp}>
+              <Text style={styles.loginButtonText}>SIGN UP</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.signUpContainer}>
+            <Text style={styles.signUpText}>Already have an Account? </Text>
+            <TouchableOpacity onPress={handleLogin}>
+              <Text style={styles.signUpLink}>Login</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
       {/* Removed the bottomIllustrations container */}
 
       {/* Terms and Conditions Modal */}
@@ -451,7 +502,9 @@ export default function SignUpScreen({ navigation }) {
             <TouchableWithoutFeedback>
               <View style={styles.modalView}>
                 <Text style={styles.modalTitle}>Terms and Conditions</Text>
-                <ScrollView style={styles.modalScrollView}>{renderNumberedText(TERMS_AND_CONDITIONS_TEXT)}</ScrollView>
+                <ScrollView style={styles.modalScrollView}>
+                  {renderNumberedText(TERMS_AND_CONDITIONS_TEXT)}
+                </ScrollView>
               </View>
             </TouchableWithoutFeedback>
           </View>
@@ -470,7 +523,9 @@ export default function SignUpScreen({ navigation }) {
             <TouchableWithoutFeedback>
               <View style={styles.modalView}>
                 <Text style={styles.modalTitle}>Privacy Policy</Text>
-                <ScrollView style={styles.modalScrollView}>{renderNumberedText(PRIVACY_POLICY_TEXT)}</ScrollView>
+                <ScrollView style={styles.modalScrollView}>
+                  {renderNumberedText(PRIVACY_POLICY_TEXT)}
+                </ScrollView>
               </View>
             </TouchableWithoutFeedback>
           </View>
@@ -489,14 +544,16 @@ export default function SignUpScreen({ navigation }) {
             <TouchableWithoutFeedback>
               <View style={styles.modalView}>
                 <Text style={styles.modalTitle}>Refund Policy</Text>
-                <ScrollView style={styles.modalScrollView}>{renderNumberedText(REFUND_POLICY_TEXT)}</ScrollView>
+                <ScrollView style={styles.modalScrollView}>
+                  {renderNumberedText(REFUND_POLICY_TEXT)}
+                </ScrollView>
               </View>
             </TouchableWithoutFeedback>
           </View>
         </TouchableWithoutFeedback>
       </Modal>
     </View>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
@@ -513,11 +570,12 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   scrollViewContent: {
-    flexGrow: 1,
+    flexGrow: 1, // ✅ This ensures content can grow
     alignItems: "center",
     paddingHorizontal: 20,
     paddingTop: 80,
-    paddingBottom: 100, // Keep padding to ensure content isn't cut off at the bottom
+    paddingBottom: 100, // Keep padding to ensure content isn't cut off
+    justifyContent: "center", // ✅ This helps center the content vertically
   },
   topIllustrationContainer: {
     width: "100%",
@@ -679,30 +737,7 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins-Bold",
   },
   // Removed bottomIllustrations styles as the component is removed
-  // bottomIllustrations: {
-  //   position: "absolute",
-  //   bottom: 0,
-  //   width: "100%",
-  //   flexDirection: "row",
-  //   justifyContent: "space-between",
-  //   paddingHorizontal: 0,
-  //   margin: 0,
-  //   zIndex: 1,
-  // },
-  // bottomLeftImage: {
-  //   width: 160,
-  //   height: 162.39,
-  //   resizeMode: "contain",
-  //   alignSelf: "flex-end",
-  //   marginLeft: -15,
-  // },
-  // bottomRightImage: {
-  //   width: 145,
-  //   height: 216.26,
-  //   resizeMode: "contain",
-  //   alignSelf: "flex-end",
-  //   marginRight: -15,
-  // },
+
   // Modal Styles (reused for all three modals)
   centeredView: {
     flex: 1,
@@ -749,4 +784,4 @@ const styles = StyleSheet.create({
   boldText: {
     fontFamily: "Poppins-Bold", // Apply Poppins-Bold to the entire heading line
   },
-})
+});

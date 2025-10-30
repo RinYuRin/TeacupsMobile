@@ -80,7 +80,7 @@ router.get("/all", async (req, res) => {
   // ... (This route remains unchanged)
   try {
     // Find all orders, and select status, createdAt, grandTotal, AND items
-    const orders = await Order.find({}, 'status createdAt grandTotal items');
+    const orders = await Order.find({}, 'status createdAt grandTotal items username');
     res.json(orders);
   } catch (error) {
     console.error("Fetch all orders error:", error);
