@@ -32,18 +32,47 @@ const ProductDetails = ({ navigation, route }) => {
 
   useEffect(() => {
     const fetchAddons = async () => {
+      // Default add-ons to always include (price fixed at ₱10)
+      const defaultAddons = [
+        "Cashew Nuts",
+        "Popping bobba",
+        "Espresso",
+        "Coffee jelly",
+        "Candy toppings",
+        "Marshmallows",
+        "Fruit jelly",
+        "Cheesecake",
+        "Cream puff",
+        "Nata",
+        "Cream cheese",
+        "Tapioca pearl",
+        "Crushed oreo",
+      ].map((name) => ({ label: name, price: 10 }));
+
+      // Show defaults immediately so UI isn't empty while fetching
+      setAvailableAddons(defaultAddons);
+
       try {
         const res = await fetch(`${API.baseURL}/product/fetch`);
         const allProducts = await res.json();
 
         const formattedAddons = allProducts
-          .filter((p) => p.category.toUpperCase() === "ADDS ON")
+          .filter((p) => p.category && p.category.toUpperCase() === "ADDS ON")
           .map((p) => ({
             label: p.name,
             price: Number(p.priceS) || 0,
           }));
 
-        setAvailableAddons(formattedAddons);
+        // Merge fetched addons with defaults; defaults override fetched ones with same label
+        const combined = [...formattedAddons, ...defaultAddons];
+        const deduped = Object.values(
+          combined.reduce((acc, a) => {
+            acc[a.label] = a;
+            return acc;
+          }, {})
+        );
+
+        setAvailableAddons(deduped);
       } catch (err) {
         console.error("Failed to fetch add-ons:", err);
         Toast.show({
@@ -51,6 +80,8 @@ const ProductDetails = ({ navigation, route }) => {
           text1: "Error",
           text2: "Could not load add-ons from the server.",
         });
+        // Keep defaults in case of failure
+        setAvailableAddons(defaultAddons);
       }
     };
 

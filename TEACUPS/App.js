@@ -1,12 +1,16 @@
 "use client";
 import React, { useCallback } from "react";
-import { StyleSheet } from "react-native";
+import { StyleSheet, View, Platform, StatusBar as NativeStatusBar } from "react-native"; // Removed SafeAreaView from here
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import Toast from "react-native-toast-message";
 import { toastConfig } from "./toastConfig.js";
+
+// ✅ IMPORT 1: Import the correct Safe Area components
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar'; // Using Expo's status bar is often more reliable, but standard RN works too.
 
 // Screens
 import LoginScreen from "./login";
@@ -29,7 +33,6 @@ SplashScreen.preventAutoHideAsync();
 const Stack = createNativeStackNavigator();
 
 export default function App() {
-  // Load custom fonts
   const [fontsLoaded] = useFonts({
     "Poppins-Bold": require("./assets/font/Poppins/Poppins-Bold.ttf"),
     "Poppins-Regular": require("./assets/font/Poppins/Poppins-Regular.ttf"),
@@ -38,7 +41,6 @@ export default function App() {
     "Poppins-LightItalic": require("./assets/font/Poppins/Poppins-LightItalic.ttf"),
   });
 
-  // Hide splash screen when fonts are loaded
   const onLayoutRootView = useCallback(async () => {
     if (fontsLoaded) {
       await SplashScreen.hideAsync();
@@ -47,44 +49,64 @@ export default function App() {
 
   if (!fontsLoaded) return null;
 
-  return (
-    <>
-    <NavigationContainer onReady={onLayoutRootView}>
-      <Stack.Navigator
-        initialRouteName="Onboarding"
-        screenOptions={{ headerShown: false }}
-      >
-        {/* App Screens */}
-        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="SignUp" component={SignUpScreen} />
-        <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
-        <Stack.Screen name="Dashboard" component={Dashboard} />
-        <Stack.Screen name="Report" component={Report} />
-        <Stack.Screen name="Settings" component={SettingsScreen} />
-        <Stack.Screen name="EditProfile" component={EditProfile} />
-        <Stack.Screen name="ChangePassword" component={ChangePassword} />
-        <Stack.Screen name="Userhome" component={Userhome} />
-        <Stack.Screen name="ProductDetails" component={ProductDetails} />
-        <Stack.Screen name="AddToCharts" component={AddToCharts} />
-        <Stack.Screen name="Notifications" component={NotificationsPanel} />
-        <Stack.Screen name="Profile" component={UserProfile} />
-      </Stack.Navigator>
+  const GLOBAL_BG_COLOR = "#FDF5E6"; 
 
+  return (
+    // ✅ FIX PART 1: Wrap the entire app in SafeAreaProvider
+    <SafeAreaProvider style={{ backgroundColor: GLOBAL_BG_COLOR }}>
       
-    </NavigationContainer>
-    {/* ✅ Place Toast OUTSIDE navigation */}
-    <Toast config={toastConfig} position="top" visibilityTime={3000} />
-    </>
+      {/* ✅ FIX PART 2: Set translucent to TRUE.
+          This allows the content to draw under the bar, but SafeAreaView (below) 
+          will instantly push it down with padding. This prevents the "jump" glitch. 
+      */}
+      <StatusBar 
+        translucent={true} 
+        backgroundColor="transparent" 
+        style="dark" // This sets the text color to dark
+      />
+
+      {/* ✅ FIX PART 3: Use SafeAreaView from context, with edges set to top only or standard */}
+      <SafeAreaView 
+        style={{ flex: 1, backgroundColor: GLOBAL_BG_COLOR }} 
+        edges={['top', 'left', 'right']} // This forces the padding immediately
+      >
+        <View style={{ flex: 1, backgroundColor: GLOBAL_BG_COLOR }} onLayout={onLayoutRootView}>
+          <NavigationContainer>
+            <Stack.Navigator
+              initialRouteName="Onboarding"
+              screenOptions={{ headerShown: false }}
+            >
+              <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+              <Stack.Screen name="Login" component={LoginScreen} />
+              <Stack.Screen name="SignUp" component={SignUpScreen} />
+              <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
+              <Stack.Screen name="Dashboard" component={Dashboard} />
+              <Stack.Screen name="Report" component={Report} />
+              <Stack.Screen name="Settings" component={SettingsScreen} />
+              <Stack.Screen name="EditProfile" component={EditProfile} />
+              <Stack.Screen name="ChangePassword" component={ChangePassword} />
+              <Stack.Screen name="Userhome" component={Userhome} />
+              <Stack.Screen name="ProductDetails" component={ProductDetails} />
+              <Stack.Screen name="AddToCharts" component={AddToCharts} />
+              <Stack.Screen name="Notifications" component={NotificationsPanel} />
+              <Stack.Screen name="Profile" component={UserProfile} />
+            </Stack.Navigator>
+          </NavigationContainer>
+          
+          <Toast config={toastConfig} position="top" visibilityTime={3000} />
+        </View>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+    // ... your existing styles remain unchanged ...
+    container: {
     flex: 1,
     backgroundColor: "#816356",
-    position: "relative",
   },
+
   backgroundLogoContainer: {
     position: "absolute",
     top: "73.2%",

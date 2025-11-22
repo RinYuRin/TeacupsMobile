@@ -1,7 +1,7 @@
 "use client"
 
 // 1. Added useEffect and useMemo
-import { useState, useEffect, useMemo, useCallback } from "react" // ✅ Added useCallback
+import { useState, useEffect, useMemo, useCallback } from "react" 
 import { View, Text, TouchableOpacity, Image, TextInput, ScrollView, ActivityIndicator } from "react-native"
 import DateTimePickerModal from "react-native-modal-datetime-picker"
 import { Search } from "lucide-react-native"
@@ -16,7 +16,7 @@ import {
   Settings,
   Home,
 } from "lucide-react-native";
-import { useFocusEffect } from "@react-navigation/native"; // ✅ Added this import
+import { useFocusEffect } from "@react-navigation/native"; 
 
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
@@ -25,7 +25,7 @@ import { useFonts } from "expo-font"
 // 2. Added API import (assuming path)
 import API from "./api";
 
-// Use this image for all products
+// Use this image for all products fallback
 const SAMPLE_IMG_URL = "https://images.unsplash.com/photo-1509042239860-f550ce710b93";
 
 // ✅ NEW: Image Map to link DB names to static assets
@@ -50,9 +50,8 @@ const inventoryImageMap = {
 
 // Helper to get image, falling back to a default if name not in map
 const getInventoryImage = (name) => {
-  // Trim whitespace from name, e.g. "Black Tea " -> "Black Tea"
   const cleanName = name.trim(); 
-  return inventoryImageMap[cleanName] || require("./assets/image/Inventory/Cup.png"); // Default image
+  return inventoryImageMap[cleanName] || require("./assets/image/Inventory/Cup.png"); 
 };
 
 
@@ -68,7 +67,7 @@ export default function Dashboard({ navigation }) {
   // --- UI State ---
   const [activeTab, setActiveTab] = useState("Today")
   const [activeNavItem, setActiveNavItem] = useState("Dashboard")
-  const [selectedDate, setSelectedDate] = useState(new Date()) // Use today's date
+  const [selectedDate, setSelectedDate] = useState(new Date()) 
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedProduct, setSelectedProduct] = useState(null)
@@ -87,25 +86,17 @@ export default function Dashboard({ navigation }) {
   const [isLoading, setIsLoading] = useState(true); 
   const [chartCategory, setChartCategory] = useState(null); 
 
-  // ✅ DELETED: old fetchInventory function
-
-  // --- ✅ DELETED: old useEffect for static data ---
-
-  // --- ✅ DELETED: old useEffect for dashboard stats ---
-
-  // --- ✅ NEW: Fetch ALL data when screen comes into focus ---
+  // --- Fetch ALL data when screen comes into focus ---
   useFocusEffect(
     useCallback(() => {
-      // This function will run every time the screen is focused
       const fetchData = async () => {
-        // Only fetch all this data if we are on the Dashboard tab
         if (activeNavItem !== "Dashboard") return; 
         
         console.log("Refreshing dashboard data...");
-        setIsLoading(true); // Show loading spinner
+        setIsLoading(true); 
 
         try {
-          // --- 1. Fetch Dashboard Stats (depends on tabs) ---
+          // --- 1. Fetch Dashboard Stats ---
           const rangeMap = {
             "Today": "day", "This Week": "week", "Month": "month", "Yearly": "year"
           };
@@ -121,7 +112,7 @@ export default function Dashboard({ navigation }) {
             setDashboardStats(null);
           }
 
-          // --- 2. Fetch all other data simultaneously ---
+          // --- 2. Fetch all other data ---
           const [productRes, customerRes, purchaseRes, inventoryRes] = await Promise.all([
             fetch(`${API.baseURL}/product/fetch`),
             fetch(`${API.baseURL}/purchase/count`),
@@ -129,35 +120,21 @@ export default function Dashboard({ navigation }) {
             fetch(`${API.baseURL}/inventory`),
           ]);
 
-          // Process products
           if (productRes.ok) setAllProducts(await productRes.json());
-          else console.error("Failed to fetch products");
-          
-          // Process customer count
           if (customerRes.ok) setCustomerCount((await customerRes.json()).count || 0);
-          else console.error("Failed to fetch customer count");
-
-          // Process purchases
           if (purchaseRes.ok) setAllPurchases(await purchaseRes.json());
-          else console.error("Failed to fetch purchases");
-
-          // Process inventory
           if (inventoryRes.ok) setInventory(await inventoryRes.json());
-          else console.error("Failed to fetch inventory");
 
         } catch (err) {
           console.error("Error fetching dashboard data:", err);
         } finally {
-          setIsLoading(false); // Hide loading spinner
+          setIsLoading(false); 
         }
       };
 
-      fetchData(); // Run the fetch
-      
-      // The effect will re-run if the user changes tabs or the date
+      fetchData(); 
     }, [activeTab, selectedDate, activeNavItem]) 
   );
-
 
   const showDatePicker = () => setDatePickerVisibility(true)
   const hideDatePicker = () => setDatePickerVisibility(false)
@@ -172,7 +149,6 @@ export default function Dashboard({ navigation }) {
     year: "numeric",
   })
 
-  // Helper for formatting numbers
   const formatStat = (num) => {
     if (typeof num !== 'number') return '0';
     return Math.round(num).toLocaleString();
@@ -190,6 +166,17 @@ export default function Dashboard({ navigation }) {
   const totalRevenue = dashboardStats?.totalRevenue || 0;
   const totalPurchasedProducts = dashboardStats?.totalPurchasedProducts || 0; 
   const bestSeller = dashboardStats?.bestSeller || { name: 'N/A', quantity: 0 };
+
+  // ✅ NEW: Find the correct image for the Best Seller
+  const bestSellerImage = useMemo(() => {
+    if (!bestSeller || bestSeller.name === 'N/A') return SAMPLE_IMG_URL;
+    
+    // Find the product in your product list that matches the best seller's name
+    const product = allProducts.find(p => p.name === bestSeller.name);
+    
+    // Return that product's image, or the sample if not found
+    return product?.image || SAMPLE_IMG_URL;
+  }, [bestSeller, allProducts]);
   
   // --- Memos for Product Tab & Chart ---
   const allCategories = useMemo(() => {
@@ -330,8 +317,8 @@ export default function Dashboard({ navigation }) {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: editingItem.name, // Send name back
-          stock: Number(newStock) // Send new stock
+          name: editingItem.name, 
+          stock: Number(newStock) 
         })
       });
 
@@ -340,10 +327,9 @@ export default function Dashboard({ navigation }) {
       }
 
       // Success!
-      setEditingItem(null); // Close modal
-      setNewStock(""); // Clear input
+      setEditingItem(null); 
+      setNewStock(""); 
       
-      // ✅ Manually re-fetch JUST inventory after update
       const inventoryRes = await fetch(`${API.baseURL}/inventory`);
       if (inventoryRes.ok) {
         setInventory(await inventoryRes.json());
@@ -351,19 +337,17 @@ export default function Dashboard({ navigation }) {
     
     } catch (err) {
       console.error("Error updating stock:", err);
-      // You could show a toast here
     }
   };
 
   const navItems = [
-    // ... (All your nav items remain unchanged) ...
     { icon: Home, label: "Dashboard", id: "Dashboard" },
     { icon: Package, label: "Product", id: "Product" },
     { icon: Boxes, label: "Inventory", id: "Inventory" },
     { icon: BarChart3, label: "Reports", id: "Reports" },
     { icon: Settings, label: "Settings", id: "Settings" },
   ]
-  // --- RENDER ---
+
   if (!fontsLoaded) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
@@ -383,15 +367,12 @@ export default function Dashboard({ navigation }) {
           padding: 16,
         }}
       >
-        {/* Loading Indicator */}
         {(isLoading) && activeNavItem === "Dashboard" && (
           <ActivityIndicator size="large" color="#8B4513" style={{ marginVertical: 40 }} />
         )}
 
-        {/* DASHBOARD CONTENT */}
         {(!isLoading) && activeNavItem === "Dashboard" && (
           <>
-            {/* ... (Dashboard content: Header, Tabs, Stats Cards, Best Seller... remains unchanged) ... */}
             {/* Header */}
             <View style={{
               flexDirection: "row",
@@ -436,7 +417,6 @@ export default function Dashboard({ navigation }) {
               </TouchableOpacity>
             </View>
 
-            {/* Date Picker Modal */}
             <DateTimePickerModal
               isVisible={isDatePickerVisible}
               mode="date"
@@ -456,7 +436,6 @@ export default function Dashboard({ navigation }) {
               gap: 10,
               marginBottom: 20,
             }}>
-              {/* ✅ MODIFIED: "Total Order" card (backend) */}
               <View style={{
                 flex: 1,
                 backgroundColor: "#D4C4B0",
@@ -474,7 +453,6 @@ export default function Dashboard({ navigation }) {
                   </Text>
                 </View>
               </View>
-              {/* ✅ MODIFIED: "Total Customer" card (backend) */}
               <View style={{
                 flex: 1,
                 backgroundColor: "#E6D7A3",
@@ -492,7 +470,6 @@ export default function Dashboard({ navigation }) {
                   </Text>
                 </View>
               </View>
-              {/* ✅ MODIFIED: "Total Sales" card (backend) */}
               <View style={{
                 width: "100%",
                 backgroundColor: "#C4956C",
@@ -513,7 +490,7 @@ export default function Dashboard({ navigation }) {
               </View>
             </View>
 
-            {/* ✅ MODIFIED: Dynamic Trending Product (backend) */}
+            {/* ✅ MODIFIED: Dynamic Trending Product (Correct Image) */}
             <View style={{
               backgroundColor: "#fff",
               borderRadius: 12,
@@ -521,9 +498,8 @@ export default function Dashboard({ navigation }) {
               overflow: "hidden",
             }}>
               <Image
-                source={{
-                  uri: "https://images.unsplash.com/photo-1509042239860-f550ce710b93",
-                }}
+                // ✅ FIX: Replaced hardcoded URI with dynamic `bestSellerImage`
+                source={{ uri: bestSellerImage }}
                 style={{ width: "100%", height: 150 }}
               />
               <View style={{ 
@@ -550,7 +526,7 @@ export default function Dashboard({ navigation }) {
               </View>
             </View>
 
-            {/* --- ✅ RESTORED: DYNAMIC Chart --- */}
+            {/* Chart */}
             <View style={{
               backgroundColor: "#fff",
               borderRadius: 12,
@@ -561,7 +537,6 @@ export default function Dashboard({ navigation }) {
                 {chartCategory ? chartCategory.toUpperCase() : "SALES CHART"}
               </Text>
 
-              {/* Category Filter Buttons */}
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -590,7 +565,6 @@ export default function Dashboard({ navigation }) {
                 ))}
               </ScrollView>
 
-              {/* Chart Bars */}
               {productSalesChartData.length === 0 ? (
                 <Text style={{ color: 'gray', padding: 10 }}>
                   {chartCategory ? `No sales data for ${chartCategory}.` : "Loading..."}
@@ -628,11 +602,9 @@ export default function Dashboard({ navigation }) {
           </>
         )}
 
-        {/* --- DYNAMIC PRODUCT CONTENT (Unchanged) --- */}
+        {/* Product Tab Content */}
         {activeNavItem === "Product" && (
-          // ... (Product tab content remains unchanged) ...
           <View>
-            {/* Search Bar */}
             <View style={{
               backgroundColor: "#fff",
               flexDirection: "row",
@@ -653,7 +625,6 @@ export default function Dashboard({ navigation }) {
               />
             </View>
 
-            {/* Category Filter Buttons (Dynamic) */}
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -693,7 +664,6 @@ export default function Dashboard({ navigation }) {
               ))}
             </ScrollView>
 
-            {/* Filtered Products (Dynamic) */}
             {filteredProducts
               .filter((product) => !selectedCategory || product.category.toUpperCase() === selectedCategory)
               .map((product, index) => (
@@ -703,7 +673,6 @@ export default function Dashboard({ navigation }) {
                     borderRadius: 12,
                     marginBottom: 20,
                     overflow: "hidden",
-                    // Added shadow for better visibility with black text
                     shadowColor: "#000",
                     shadowOffset: { width: 0, height: 1 },
                     shadowOpacity: 0.1,
@@ -714,12 +683,10 @@ export default function Dashboard({ navigation }) {
                       source={{ uri: product.image }}
                       style={{ width: "100%", height: 150 }}
                     />
-                    {/* --- CONFIRMED: Text color changed to black --- */}
                     <View style={{ position: "absolute", bottom: 12, left: 12, backgroundColor: 'rgba(255,255,255,0.7)', padding: 5, borderRadius: 5 }}>
                       <Text style={{ fontSize: 16, fontWeight: "bold", color: "black" }}>
                         {product.name}
                       </Text>
-                      {/* PRICE DETAILS (Dynamic) */}
                       {product.prices && (
                         <View style={{ marginTop: 2 }}>
                           {Object.entries(product.prices).map(([size, price]) => (
@@ -733,7 +700,7 @@ export default function Dashboard({ navigation }) {
                       )}
                       <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
                         <Text style={{ color: "black", marginRight: 8 }}>
-                          {product.sold} Sold {/* ✅ Now uses purchase data */}
+                          {product.sold} Sold
                         </Text>
                         <Star size={14} color="gold" fill="gold" />
                         <Text style={{ color: "black", marginLeft: 4 }}>
@@ -741,14 +708,13 @@ export default function Dashboard({ navigation }) {
                         </Text>
                       </View>
                     </View>
-                    {/* --- END TEXT COLOR CHANGE --- */}
                   </View>
                 </TouchableOpacity>
               ))}
           </View>
         )}
 
-        {/* ✅ INVENTORY CONTENT (NOW USES DB DATA) */}
+        {/* Inventory Content */}
         {activeNavItem === "Inventory" && (
           <View>
             <Text style={{ fontSize: 20, fontWeight: "bold", marginBottom: 16, fontFamily: "Poppins-Bold" }}>
@@ -756,7 +722,7 @@ export default function Dashboard({ navigation }) {
             </Text>
             {inventory.map((item) => (
               <View
-                key={item._id} // Use _id from database
+                key={item._id} 
                 style={{
                   backgroundColor: "#fff",
                   padding: 12,
@@ -766,16 +732,9 @@ export default function Dashboard({ navigation }) {
                   alignItems: "center",
                 }}
               >
-                {/* Use the image map helper */}
-                <Image source={getInventoryImage(item.name)} style={{ width: 40, height: 40, marginRight: 12 }} />
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 16, fontWeight: "bold", fontFamily: "Poppins-Bold" }}>{item.name}</Text>
-                  
-                  {/* REMOVED: Category, Unit, Reorder, as they are not in the DB schema */}
-                  
                   <Text style={{ fontFamily: "Poppins-Regular" }}>Stock: {item.stock}</Text>
-                  
-                  {/* ADDED: Status from DB */}
                   <Text style={{ 
                     fontFamily: "Poppins-Regular",
                     color: item.status === 'Low Stock' ? '#E6A23C' : item.status === 'Out of Stock' ? '#F56C6C' : '#67C23A' 
@@ -785,7 +744,7 @@ export default function Dashboard({ navigation }) {
                 </View>
                 <TouchableOpacity
                   onPress={() => {
-                    setEditingItem(item) // item now contains _id
+                    setEditingItem(item) 
                     setNewStock(item.stock.toString())
                   }}
                   style={{
@@ -805,7 +764,7 @@ export default function Dashboard({ navigation }) {
         )}
       </ScrollView>
 
-      {/* ✅ EDIT STOCK MODAL (NOW CALLS API) */}
+      {/* Edit Stock Modal */}
       {editingItem && (
         <BlurView
           intensity={30}
@@ -859,7 +818,7 @@ export default function Dashboard({ navigation }) {
             />
 
             <TouchableOpacity
-              onPress={handleEditStock} // ✅ Use the new API call function
+              onPress={handleEditStock} 
               style={{
                 backgroundColor: "#8B4513",
                 paddingVertical: 10,
@@ -876,7 +835,7 @@ export default function Dashboard({ navigation }) {
         </BlurView>
       )}
 
-      {/* Bottom Navigation (Unchanged) */}
+      {/* Bottom Navigation */}
       <View style={{
         backgroundColor: "#fff",
         flexDirection: "row",
@@ -885,7 +844,6 @@ export default function Dashboard({ navigation }) {
         borderTopWidth: 1,
         borderColor: "#ddd",
       }}>
-        {/* ... (Bottom Navigation remains unchanged) ... */}
         {navItems.map((item) => {
           const Icon = item.icon
           return (
@@ -912,7 +870,7 @@ export default function Dashboard({ navigation }) {
             </TouchableOpacity>
           )
         })}
-        {/* --- DYNAMIC Product Popup Modal (NOW USES PURCHASE DATA) --- */}
+        {/* Product Popup Modal */}
         {selectedProduct && (
           <BlurView
             intensity={0}
@@ -932,7 +890,7 @@ export default function Dashboard({ navigation }) {
               backgroundColor: "#fff",
               borderRadius: 16,
               padding: 20,
-              marginTop: -750, // This seems very high, might need adjustment
+              marginTop: -750, 
               width: "100%",
               maxWidth: 350,
               alignItems: "center",
@@ -961,7 +919,6 @@ export default function Dashboard({ navigation }) {
               <Text style={{ marginBottom: 4 }}>⭐ {selectedProduct.rating}</Text>
               <Text style={{ marginBottom: 12 }}>{selectedProduct.sold} Sold (All Time)</Text>
 
-              {/* PRICE DETAILS (Dynamic) */}
               {selectedProduct.prices && (
                 <View style={{ marginBottom: 12, width: "100%" }}>
                   <Text style={{ fontWeight: "bold", marginBottom: 2 }}>Prices:</Text>
@@ -975,7 +932,6 @@ export default function Dashboard({ navigation }) {
                 </View>
               )}
 
-              {/* --- MODIFICATION: DYNAMIC SALES DETAILS (NOW USES PURCHASE DATA) --- */}
               <View style={{ marginBottom: 16, width: "100%" }}>
                 <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
                   <FontAwesome name="calendar" size={18} color="#8B4513" style={{ marginRight: 6 }} />
@@ -995,7 +951,6 @@ export default function Dashboard({ navigation }) {
                     Monthly Sales: {selectedProduct.monthlySales}
                   </Text>
                 </View>
-                {/* --- NEWLY ADDED YEARLY SALES --- */}
                 <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
                   <FontAwesome name="calendar-check-o" size={18} color="#8B4513" style={{ marginRight: 6 }} />
                   <Text style={{ fontSize: 16 }}>
@@ -1003,9 +958,7 @@ export default function Dashboard({ navigation }) {
                   </Text>
                 </View>
               </View>
-              {/* --- END MODIFICATION --- */}
 
-              {/* Close button */}
               <TouchableOpacity
                 onPress={() => setSelectedProduct(null)}
                 style={{

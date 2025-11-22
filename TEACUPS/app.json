@@ -12,14 +12,23 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.rinyurin.yu.TEACUPS",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png", 
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.rinyurin.yu.TEACUPS"
+      "package": "com.rinyurin.yu.TEACUPS",
+      "statusBar": {
+        "translucent": false,
+        "backgroundColor": "#FDF5E6",
+        "barStyle": "dark-content"
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -29,9 +38,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "b677957e-168e-4336-af94-aa13cc40952f"
+        "projectId": "82834029-7bb3-4385-9555-21480f1bed21"
       }
     },
-    "owner": "rinyurin.yu" 
+    "owner": "rinyurin.yu"
   }
 }

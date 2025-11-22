@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback, useEffect } from "react"; // ✅ useEffect added
+import { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   StatusBar as RNStatusBar,
   KeyboardAvoidingView,
   Platform,
+  Keyboard, // ✅ IMPORT KEYBOARD
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Toast from "react-native-toast-message";
@@ -20,10 +21,14 @@ import API from "./api";
 
 SplashScreen.preventAutoHideAsync();
 
-export default function LoginScreen({ navigation, route }) { // ✅ route added
+export default function LoginScreen({ navigation, route }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  
+  // ✅ STATE TO TRACK KEYBOARD VISIBILITY
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
   const [fontsLoaded] = useFonts({
     "Poppins-Bold": require("./assets/font/Poppins/Poppins-Bold.ttf"),
     "Poppins-Regular": require("./assets/font/Poppins/Poppins-Regular.ttf"),
@@ -38,18 +43,33 @@ export default function LoginScreen({ navigation, route }) { // ✅ route added
     }
   }, [fontsLoaded]);
 
-  // ✅ THIS HOOK CATCHES THE LOGOUT SIGNAL
+  // ✅ EFFECT: Listen for keyboard events to hide background images
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      "keyboardDidShow",
+      () => {
+        setKeyboardVisible(true); // Keyboard is open
+      }
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      "keyboardDidHide",
+      () => {
+        setKeyboardVisible(false); // Keyboard is closed
+      }
+    );
+
+    return () => {
+      keyboardDidHideListener.remove();
+      keyboardDidShowListener.remove();
+    };
+  }, []);
+
   useEffect(() => {
     if (route.params?.loggedOut) {
-      showToast(
-        "success",
-        "Logged Out",
-        "You have successfully logged out."
-      );
-      // Clear the param so it doesn't show again on navigation
+      showToast("success", "Logged Out", "You have successfully logged out.");
       navigation.setParams({ loggedOut: undefined });
     }
-  }, [route.params?.loggedOut]); // Runs when this param changes
+  }, [route.params?.loggedOut]);
 
   const showToast = (type, title, message) => {
     Toast.show({
@@ -63,25 +83,19 @@ export default function LoginScreen({ navigation, route }) { // ✅ route added
   };
 
   const handleLogin = async () => {
+    // ... (Your existing login logic remains exactly the same) ...
     try {
       const response = await fetch(`${API.baseURL}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-
       const data = await response.json();
 
       if (response.ok) {
         if (data.user) {
           await AsyncStorage.setItem("user", JSON.stringify(data.user));
-          showToast(
-            "success",
-            "Login Successful",
-            `Welcome back, ${data.user.username || data.user.email}!`
-          );
-
-          // Navigation based on role
+          showToast("success", "Login Successful", `Welcome back, ${data.user.username || data.user.email}!`);
           setTimeout(() => {
             if (data.user.role === "admin") {
               navigation.navigate("Dashboard");
@@ -107,12 +121,19 @@ export default function LoginScreen({ navigation, route }) { // ✅ route added
 
   return (
     <View style={styles.fullScreenContainer} onLayout={onLayoutRootView}>
-      <Image source={require("./assets/image/image1.png")} style={styles.bgIconLeft} resizeMode="contain" />
-      <Image source={require("./assets/image/image2.png")} style={styles.bgIconRight} resizeMode="contain" />
-      <RNStatusBar barStyle="light-content" backgroundColor="#806153" />
+      
+      {/* ✅ FIX: Conditional Rendering based on Keyboard Visibility */}
+      {!isKeyboardVisible && (
+        <>
+          <Image source={require("./assets/image/image1.png")} style={styles.bgIconLeft} resizeMode="contain" />
+          <Image source={require("./assets/image/image2.png")} style={styles.bgIconRight} resizeMode="contain" />
+        </>
+      )}
 
-      <KeyboardAvoidingView style={styles.keyboardAvoidingContainer} behavior={Platform.OS === "ios" ? "padding" : "height"}>
-        <ScrollView contentContainerStyle={styles.scrollViewContent}>
+      <RNStatusBar barStyle="light-content" backgroundColor="#806153" />
+      
+      <KeyboardAvoidingView style={styles.keyboardAvoidingContainer} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <ScrollView contentContainerStyle={styles.scrollViewContent} keyboardShouldPersistTaps="handled">
           <View style={styles.topIllustrationContainer}>
             <Image source={require("./assets/image/coffe.png")} style={styles.topIllustration} />
             <View style={styles.topTextOverlay}>
@@ -173,14 +194,12 @@ export default function LoginScreen({ navigation, route }) { // ✅ route added
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* ✅ Toast UI REMOVED FROM HERE */}
-      {/* <Toast /> */}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // ... (Your existing styles remain exactly the same) ...
   fullScreenContainer: {
     flex: 1,
     backgroundColor: "#F8F0E3",
@@ -208,7 +227,6 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   topIllustrationContainer: {
-
     width: "100%",
     alignItems: "center",
     justifyContent: "center",
